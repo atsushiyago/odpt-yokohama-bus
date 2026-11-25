@@ -3,6 +3,7 @@ import io
 import logging
 import math
 import os
+import threading
 import time
 import zipfile
 from contextlib import asynccontextmanager
@@ -639,3 +640,42 @@ def trigger_collect():
         status_code=502,
         detail=f"GitHub API returned status {res.status_code}",
     )
+
+
+ANALYSIS_SUMMARY_URL = (
+    "https://raw.githubusercontent.com/atsushiyago/odpt-bikeshare-collector"
+    "/main/data/analysis_summary.json"
+)
+ANALYSIS_CACHE_TTL_SEC = 300.0
+ANALYSIS_CACHE = {"data": None, "fetched_at": 0.0}
+ANALYSIS_CACHE_LOCK = threading.Lock()
+
+
+@app.get("/api/analysis")
+def get_analysis_summary():
+    """GitHub 上の蓄積データ分析サマリー JSON を取得する（300秒メモリキャッシュ付き）。"""
+    now = time.monotonic()
+    with ANALYSIS_CACHE_LOCK:
+        cached_data = ANALYSIS_CACHE["data"]
+        cached_at = ANALYSIS_CACHE["fetched_at"]
+        if cached_data is not None and (now - cached_at) < ANALYSIS_CACHE_TTL_SEC:
+            return cached_data
+
+    try:
+        res = requests.get(ANALYSIS_SUMMARY_URL, timeout=15)
+        res.raise_for_status()
+        payload = res.json()
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning("Failed to fetch analysis summary: %s", exc)
+        with ANALYSIS_CACHE_LOCK:
+            if ANALYSIS_CACHE["data"] is not None:
+                return ANALYSIS_CACHE["data"]
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to fetch analysis summary from GitHub",
+        ) from exc
+
+    with ANALYSIS_CACHE_LOCK:
+        ANALYSIS_CACHE["data"] = payload
+        ANALYSIS_CACHE["fetched_at"] = time.monotonic()
+    return payload

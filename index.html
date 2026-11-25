@@ -12,16 +12,99 @@
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <style>
+      :root {
+        --tab-bar-height: 40px;
+      }
       body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         color: #1f2937;
+        background: #f1f5f9;
         overflow-wrap: break-word;
+      }
+
+      /* 上部スリムタブバー */
+      .app-tab-header {
+        position: sticky;
+        top: 0;
+        z-index: 1200;
+        height: var(--tab-bar-height);
+        background: #ffffff;
+        border-bottom: 1px solid #cbd5e1;
+        display: flex;
+        align-items: stretch;
+        padding: 0 12px;
+        padding-left: max(12px, env(safe-area-inset-left, 0px));
+        padding-right: max(12px, env(safe-area-inset-right, 0px));
+        box-sizing: border-box;
+      }
+      .app-tablist {
+        display: flex;
+        align-items: stretch;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .app-tablist::-webkit-scrollbar {
+        display: none;
+      }
+      .app-tab-btn {
+        position: relative;
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0 14px;
+        border: none;
+        background: transparent;
+        color: #475569;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .app-tab-btn:hover {
+        color: #0f172a;
+        background: #f8fafc;
+      }
+      .app-tab-btn[aria-selected="true"] {
+        color: #1d4ed8;
+      }
+      .app-tab-btn[aria-selected="true"]::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 0 0;
+        border-block-end: 3px solid #1d4ed8;
+      }
+
+      /* タブパネル領域 */
+      .tab-panel-realtime {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - var(--tab-bar-height));
+        height: calc(100dvh - var(--tab-bar-height));
+        overflow: hidden;
+      }
+      .tab-panel-realtime[hidden],
+      .tab-panel-analysis[hidden] {
+        display: none !important;
+      }
+      .tab-panel-analysis {
+        min-height: calc(100vh - var(--tab-bar-height));
+        min-height: calc(100dvh - var(--tab-bar-height));
+        background: #f1f5f9;
+        box-sizing: border-box;
+      }
+
+      .tab-panel-realtime > main {
+        width: 100%;
+        height: 100%;
       }
       #map {
         width: 100%;
-        height: 100vh;
-        height: 100dvh;
+        height: 100%;
       }
 
       /* モバイル上部ツールバー（PCでは非表示） */
@@ -42,7 +125,7 @@
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         font-size: 13px;
         width: 350px;
-        max-height: calc(100dvh - 24px);
+        max-height: calc(100dvh - var(--tab-bar-height) - 24px);
         overflow-y: auto;
         box-sizing: border-box;
         line-height: 1.5;
@@ -63,7 +146,7 @@
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
         font-size: 12.5px;
         width: 320px;
-        max-height: calc(100dvh - 98px);
+        max-height: calc(100dvh - var(--tab-bar-height) - 98px);
         display: flex;
         flex-direction: column;
         box-sizing: border-box;
@@ -717,12 +800,376 @@
         font-size: 11px;
       }
 
+      /* データ分析タブ用スタイル */
+      .analysis-container {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 16px 16px 32px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        box-sizing: border-box;
+      }
+      .mobile-analysis-notice {
+        display: none;
+        margin: 0;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .analysis-status-msg {
+        padding: 18px 16px;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 13.5px;
+        color: #334155;
+        text-align: center;
+      }
+      .analysis-status-msg.is-error {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #991b1b;
+      }
+      .analysis-card {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 14px 16px;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+      }
+      .analysis-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .analysis-section-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .analysis-refresh-btn {
+        min-block-size: 28px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #1e293b;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .analysis-refresh-btn:hover {
+        background: #e2e8f0;
+      }
+
+      /* KPI & 全体割合バー */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .kpi-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+      .kpi-label {
+        font-size: 11.5px;
+        color: #475569;
+        margin-bottom: 3px;
+      }
+      .kpi-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .kpi-value.is-sm {
+        font-size: 14px;
+      }
+      .overall-bar-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .stacked-bar {
+        display: flex;
+        width: 100%;
+        height: 24px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #e2e8f0;
+        border: 1px solid #cbd5e1;
+      }
+      .stacked-seg {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        transition: width 0.25s ease;
+      }
+      .seg-available {
+        background: #16a34a;
+      }
+      .seg-empty {
+        background: #ea580c;
+      }
+      .seg-no-port {
+        background: #dc2626;
+      }
+      .overall-rate-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        font-size: 12.5px;
+      }
+      .rate-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .rate-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        display: inline-block;
+        flex-shrink: 0;
+      }
+
+      /* 常習課題バス停マップ＆ランキング */
+      .problem-split {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr);
+        gap: 14px;
+        align-items: stretch;
+      }
+      .analysis-map {
+        width: 100%;
+        height: 460px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+      }
+      .problem-list-pane {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 460px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f8fafc;
+        overflow: hidden;
+      }
+      .filter-btn-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .issue-filter-btn {
+        min-block-size: 28px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .issue-filter-btn:hover {
+        background: #f1f5f9;
+      }
+      .issue-filter-btn[aria-pressed="true"] {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #ffffff;
+      }
+      .problem-list {
+        list-style: none;
+        margin: 0;
+        padding: 6px;
+        overflow-y: auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .problem-item-btn {
+        width: 100%;
+        text-align: left;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .problem-item-btn:hover {
+        border-color: #94a3b8;
+        background: #f8fafc;
+      }
+      .problem-item-btn.is-active {
+        border-color: #1d4ed8;
+        background: #eff6ff;
+      }
+      .problem-item-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+      }
+      .problem-item-name {
+        font-weight: 700;
+        font-size: 13px;
+        color: #0f172a;
+      }
+      .issue-badge {
+        display: inline-block;
+        padding: 1px 7px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .issue-badge-no-port {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #dc2626;
+      }
+      .issue-badge-empty {
+        background: #ffedd5;
+        color: #9a3412;
+        border: 1px solid #ea580c;
+      }
+      .problem-item-meta {
+        font-size: 11.5px;
+        color: #475569;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+      }
+
+      /* 時間帯別グラフ */
+      .chart-wrap {
+        position: relative;
+        width: 100%;
+        height: 320px;
+      }
+
+      /* 系統別比較テーブル */
+      .analysis-table-wrap {
+        overflow-x: auto;
+        max-width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+      }
+      .analysis-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+      .analysis-table th,
+      .analysis-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: right;
+      }
+      .analysis-table th:first-child,
+      .analysis-table td:first-child {
+        text-align: left;
+        position: sticky;
+        left: 0;
+        background: #ffffff;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .analysis-table thead th {
+        background: #f8fafc;
+        color: #334155;
+        font-weight: 700;
+        border-bottom: 2px solid #cbd5e1;
+      }
+      .analysis-table thead th:first-child {
+        background: #f8fafc;
+        z-index: 1;
+      }
+      .analysis-table tbody tr:hover td {
+        background: #f8fafc;
+      }
+      .rate-pill {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .rate-pill-green {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .rate-pill-orange {
+        background: #ffedd5;
+        color: #9a3412;
+      }
+      .rate-pill-red {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
       /* スマートフォン向けレスポンシブ（最大幅 768px） */
       @media (max-width: 768px) {
+        :root {
+          --tab-bar-height: 38px;
+        }
+        .app-tab-btn {
+          font-size: 12.5px;
+          padding: 0 12px;
+        }
+        .mobile-analysis-notice {
+          display: block;
+        }
+        .analysis-container {
+          padding: 12px 10px 24px 10px;
+          gap: 12px;
+        }
+        .problem-split {
+          grid-template-columns: 1fr;
+        }
+        .analysis-map {
+          height: 300px;
+        }
+        .problem-list-pane {
+          height: auto;
+          max-height: 360px;
+        }
+        .chart-wrap {
+          height: 250px;
+        }
+
         /* Leafletズームボタン（左上 10px..44px）と重ならない上部バー */
         .mobile-top-bar {
           position: fixed;
-          top: max(10px, env(safe-area-inset-top, 10px));
+          top: calc(
+            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px))
+          );
           left: 56px;
           right: 10px;
           z-index: 1001;
@@ -769,11 +1216,14 @@
         }
         .panel.is-mobile-open {
           position: fixed;
-          top: calc(max(10px, env(safe-area-inset-top, 10px)) + 44px);
+          top: calc(
+            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
+              42px
+          );
           left: 10px;
           right: 10px;
           width: auto;
-          max-height: 62dvh;
+          max-height: 60dvh;
           overflow-y: auto;
           z-index: 1002;
         }
@@ -799,11 +1249,14 @@
         /* 仕様説明ポップオーバー（スマホ画面上部に収める） */
         .spec-popover {
           position: fixed;
-          inset: calc(max(10px, env(safe-area-inset-top, 10px)) + 44px) 10px
-            auto 10px;
+          inset: calc(
+              var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
+                42px
+            )
+            10px auto 10px;
           width: auto;
           max-width: 420px;
-          max-height: 68dvh;
+          max-height: 64dvh;
           margin: 0 auto;
         }
 
@@ -848,13 +1301,49 @@
     </style>
   </head>
   <body>
-    <main>
+    <header class="app-tab-header">
       <div
-        id="map"
-        role="application"
-        aria-label="横浜市営バス遅延とシェアサイクル在庫地図"
-      ></div>
-    </main>
+        class="app-tablist"
+        role="tablist"
+        focusgroup="tablist nomemory"
+        aria-label="表示モード切り替え"
+      >
+        <button
+          id="tab-realtime"
+          class="app-tab-btn"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          focusgroupstart
+        >
+          リアルタイム検索
+        </button>
+        <button
+          id="tab-analysis"
+          class="app-tab-btn"
+          type="button"
+          role="tab"
+          aria-selected="false"
+        >
+          データ分析
+        </button>
+      </div>
+    </header>
+
+    <section
+      id="panel-realtime"
+      class="tab-panel-realtime"
+      role="tabpanel"
+      aria-labelledby="tab-realtime"
+      tabindex="0"
+    >
+      <main>
+        <div
+          id="map"
+          role="application"
+          aria-label="横浜市営バス遅延とシェアサイクル在庫地図"
+        ></div>
+      </main>
 
     <!-- スマホ幅専用の上部コンパクトバー -->
     <div class="mobile-top-bar" role="toolbar" aria-label="表示メニュー">
@@ -1072,8 +1561,169 @@
       </div>
       <div id="stopDetailBody" class="detail-body"></div>
     </aside>
+    </section>
+
+    <section
+      id="panel-analysis"
+      class="tab-panel-analysis"
+      role="tabpanel"
+      aria-labelledby="tab-analysis"
+      hidden
+    >
+      <div class="analysis-container">
+        <p class="mobile-analysis-notice">
+          ※詳細グラフや比較表はPCの大画面での閲覧を推奨します
+        </p>
+
+        <div id="analysisStatusMsg" class="analysis-status-msg" aria-live="polite">
+          データ分析を読み込み中...
+        </div>
+
+        <div id="analysisContent" hidden>
+          <!-- (1) 全体サマリー -->
+          <section class="analysis-card" aria-labelledby="analysis-summary-title">
+            <div class="analysis-section-header">
+              <h2 id="analysis-summary-title" class="analysis-section-title">
+                全体サマリー
+              </h2>
+              <button
+                id="analysisReloadBtn"
+                class="analysis-refresh-btn"
+                type="button"
+              >
+                再読み込み
+              </button>
+            </div>
+            <div class="kpi-grid">
+              <div class="kpi-item">
+                <div class="kpi-label">集計期間</div>
+                <div id="kpiDateRange" class="kpi-value is-sm">—</div>
+              </div>
+              <div class="kpi-item">
+                <div class="kpi-label">最終更新日時 (JST)</div>
+                <div id="kpiUpdatedAt" class="kpi-value is-sm">—</div>
+              </div>
+              <div class="kpi-item">
+                <div class="kpi-label">有効遅延延べ件数</div>
+                <div id="kpiTotalDelays" class="kpi-value">—</div>
+              </div>
+            </div>
+            <div class="overall-bar-wrap">
+              <div
+                id="overallStackedBar"
+                class="stacked-bar"
+                role="img"
+                aria-label="全体の自転車代替可否の割合"
+              ></div>
+              <div id="overallRateLegend" class="overall-rate-legend"></div>
+            </div>
+          </section>
+
+          <!-- (2) 常習課題バス停マップ＆ランキング -->
+          <section class="analysis-card" aria-labelledby="problem-stops-title">
+            <div class="analysis-section-header">
+              <h2 id="problem-stops-title" class="analysis-section-title">
+                常習課題バス停マップ＆ランキング
+              </h2>
+              <div
+                class="filter-btn-group"
+                role="group"
+                aria-label="課題種別フィルタ"
+              >
+                <button
+                  type="button"
+                  class="issue-filter-btn"
+                  data-issue-filter="all"
+                  aria-pressed="true"
+                >
+                  すべて
+                </button>
+                <button
+                  type="button"
+                  class="issue-filter-btn"
+                  data-issue-filter="no_port"
+                  aria-pressed="false"
+                >
+                  ポート空白のみ
+                </button>
+                <button
+                  type="button"
+                  class="issue-filter-btn"
+                  data-issue-filter="empty"
+                  aria-pressed="false"
+                >
+                  在庫切れのみ
+                </button>
+              </div>
+            </div>
+            <div class="problem-split">
+              <div
+                id="analysisMap"
+                class="analysis-map"
+                role="application"
+                aria-label="常習課題バス停マップ"
+              ></div>
+              <div class="problem-list-pane">
+                <ol id="problemStopsList" class="problem-list" role="list"></ol>
+              </div>
+            </div>
+          </section>
+
+          <!-- (3) 時間帯別の遅延・代替状況グラフ -->
+          <section class="analysis-card" aria-labelledby="hourly-chart-title">
+            <div class="analysis-section-header">
+              <h2 id="hourly-chart-title" class="analysis-section-title">
+                時間帯別の遅延・代替状況（0時〜23時）
+              </h2>
+            </div>
+            <div class="chart-wrap">
+              <canvas
+                id="hourlyTrendsChart"
+                aria-label="時間帯別の遅延・代替状況積み上げ棒グラフ"
+                role="img"
+              ></canvas>
+              <div
+                id="chartFallbackMsg"
+                class="analysis-status-msg is-error"
+                hidden
+              ></div>
+            </div>
+          </section>
+
+          <!-- (4) 系統別代替ポテンシャル比較テーブル -->
+          <section class="analysis-card" aria-labelledby="route-table-title">
+            <div class="analysis-section-header">
+              <h2 id="route-table-title" class="analysis-section-title">
+                系統別代替ポテンシャル比較
+              </h2>
+            </div>
+            <div
+              tabindex="0"
+              role="region"
+              aria-labelledby="route-table-title"
+              class="analysis-table-wrap"
+            >
+              <table class="analysis-table">
+                <thead>
+                  <tr>
+                    <th scope="col">系統名</th>
+                    <th scope="col">遅延件数</th>
+                    <th scope="col">平均遅延</th>
+                    <th scope="col">代替可能率</th>
+                    <th scope="col">在庫切れ率</th>
+                    <th scope="col">ポート空白率</th>
+                  </tr>
+                </thead>
+                <tbody id="routeSummaryBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script>
       const map = L.map('map').setView([35.4658, 139.6223], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1847,6 +2497,489 @@
       });
 
       loadData();
+
+      // =========================================================
+      // タブ切り替え & データ分析タブ実装
+      // =========================================================
+      const tabRealtimeBtn = document.getElementById('tab-realtime');
+      const tabAnalysisBtn = document.getElementById('tab-analysis');
+      const panelRealtimeEl = document.getElementById('panel-realtime');
+      const panelAnalysisEl = document.getElementById('panel-analysis');
+      const tabButtons = [tabRealtimeBtn, tabAnalysisBtn];
+
+      const analysisStatusMsg = document.getElementById('analysisStatusMsg');
+      const analysisContent = document.getElementById('analysisContent');
+      const analysisReloadBtn = document.getElementById('analysisReloadBtn');
+      const kpiDateRange = document.getElementById('kpiDateRange');
+      const kpiUpdatedAt = document.getElementById('kpiUpdatedAt');
+      const kpiTotalDelays = document.getElementById('kpiTotalDelays');
+      const overallStackedBar = document.getElementById('overallStackedBar');
+      const overallRateLegend = document.getElementById('overallRateLegend');
+      const problemStopsListEl = document.getElementById('problemStopsList');
+      const routeSummaryBody = document.getElementById('routeSummaryBody');
+      const chartFallbackMsg = document.getElementById('chartFallbackMsg');
+
+      let analysisData = null;
+      let analysisLoading = false;
+      let currentIssueFilter = 'all';
+      let analysisMap = null;
+      let analysisStopLayer = null;
+      let analysisMarkersById = new Map();
+      let analysisListButtonsById = new Map();
+      let hourlyChartInstance = null;
+
+      function ensureAnalysisMap() {
+        if (analysisMap) return;
+        analysisMap = L.map('analysisMap').setView([35.4658, 139.6223], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(analysisMap);
+        analysisStopLayer = L.layerGroup().addTo(analysisMap);
+      }
+
+      function setActiveProblemItem(stopId = null) {
+        for (const [id, btn] of analysisListButtonsById.entries()) {
+          btn.classList.toggle('is-active', id === stopId);
+        }
+      }
+
+      function createProblemPopup(ps) {
+        const isNoPort = ps.issue_type === 'no_port';
+        const wrap = document.createElement('div');
+
+        const badge = document.createElement('span');
+        badge.className = isNoPort
+          ? 'issue-badge issue-badge-no-port'
+          : 'issue-badge issue-badge-empty';
+        badge.textContent = isNoPort
+          ? 'ポート空白・新規設置候補'
+          : '在庫切れ・再配置候補';
+
+        const title = document.createElement('div');
+        const strong = document.createElement('strong');
+        strong.textContent = ps.stop_name;
+        title.append(strong);
+
+        const distText =
+          ps.nearest_port_dist_m !== null &&
+          ps.nearest_port_dist_m !== undefined
+            ? `${ps.nearest_port_dist_m}m`
+            : '—';
+
+        wrap.append(
+          badge,
+          title,
+          createLine(
+            `遅延件数: ${ps.delay_count}件（平均 ${ps.avg_delay_min}分）`,
+          ),
+          createLine(
+            `内訳: 代替可 ${ps.available_count} / 在庫切 ${ps.empty_count} / 空白 ${ps.no_port_count}`,
+          ),
+          createLine(`最寄りポート距離: ${distText}`),
+        );
+        return wrap;
+      }
+
+      function renderProblemStopsSection() {
+        if (!analysisData) return;
+        ensureAnalysisMap();
+
+        const allStops = analysisData.problem_stops || [];
+        const filtered = allStops.filter((ps) => {
+          if (currentIssueFilter === 'all') return true;
+          return ps.issue_type === currentIssueFilter;
+        });
+
+        analysisStopLayer.clearLayers();
+        analysisMarkersById.clear();
+        analysisListButtonsById.clear();
+
+        if (filtered.length === 0) {
+          const emptyLi = document.createElement('li');
+          emptyLi.className = 'analysis-status-msg';
+          emptyLi.textContent = '該当する課題バス停はありません';
+          problemStopsListEl.replaceChildren(emptyLi);
+          return;
+        }
+
+        const boundsPoints = [];
+        const listItems = filtered.map((ps, idx) => {
+          const isNoPort = ps.issue_type === 'no_port';
+          const fillColor = isNoPort ? '#dc2626' : '#ea580c';
+          const borderColor = isNoPort ? '#7f1d1d' : '#9a3412';
+          const radius = Math.min(16, 7 + Math.sqrt(ps.delay_count) * 1.4);
+
+          const marker = L.circleMarker([ps.lat, ps.lon], {
+            radius,
+            color: borderColor,
+            weight: 2,
+            fillColor,
+            fillOpacity: 0.82,
+          }).bindPopup(createProblemPopup(ps));
+
+          marker.on('click', () => setActiveProblemItem(ps.stop_id));
+          marker.addTo(analysisStopLayer);
+          analysisMarkersById.set(ps.stop_id, marker);
+          boundsPoints.push([ps.lat, ps.lon]);
+
+          const li = document.createElement('li');
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'problem-item-btn';
+
+          const topRow = document.createElement('div');
+          topRow.className = 'problem-item-top';
+
+          const nameEl = document.createElement('span');
+          nameEl.className = 'problem-item-name';
+          nameEl.textContent = `${idx + 1}. ${ps.stop_name}`;
+
+          const badgeEl = document.createElement('span');
+          badgeEl.className = isNoPort
+            ? 'issue-badge issue-badge-no-port'
+            : 'issue-badge issue-badge-empty';
+          badgeEl.textContent = isNoPort
+            ? 'ポート空白・設置候補'
+            : '在庫切れ・再配置候補';
+
+          topRow.append(nameEl, badgeEl);
+
+          const metaRow = document.createElement('div');
+          metaRow.className = 'problem-item-meta';
+          const distText =
+            ps.nearest_port_dist_m !== null &&
+            ps.nearest_port_dist_m !== undefined
+              ? `${ps.nearest_port_dist_m}m`
+              : '—';
+          metaRow.append(
+            createLine(`遅延: ${ps.delay_count}件`),
+            createLine(`平均: ${ps.avg_delay_min}分`),
+            createLine(`最寄りポート: ${distText}`),
+          );
+
+          btn.append(topRow, metaRow);
+          btn.addEventListener('click', () => {
+            setActiveProblemItem(ps.stop_id);
+            analysisMap.setView([ps.lat, ps.lon], 16, { animate: true });
+            marker.openPopup();
+          });
+
+          analysisListButtonsById.set(ps.stop_id, btn);
+          li.append(btn);
+          return li;
+        });
+
+        problemStopsListEl.replaceChildren(...listItems);
+
+        if (boundsPoints.length > 0) {
+          analysisMap.fitBounds(L.latLngBounds(boundsPoints), {
+            padding: [24, 24],
+            maxZoom: 14,
+            animate: false,
+          });
+        }
+      }
+
+      function renderOverallSummary(meta) {
+        kpiDateRange.textContent = meta.date_range || '—';
+        kpiUpdatedAt.textContent = meta.updated_at_jst || '—';
+        kpiTotalDelays.textContent =
+          typeof meta.total_valid_delays === 'number'
+            ? `${meta.total_valid_delays.toLocaleString()}件`
+            : '—';
+
+        const availRate = Number(meta.overall_available_rate || 0);
+        const emptyRate = Number(meta.overall_empty_rate || 0);
+        const noPortRate = Number(meta.overall_no_port_rate || 0);
+
+        const segs = [
+          {
+            cls: 'seg-available',
+            rate: availRate,
+            label: '代替可能',
+            swatch: '#16a34a',
+          },
+          {
+            cls: 'seg-empty',
+            rate: emptyRate,
+            label: '在庫切れ',
+            swatch: '#ea580c',
+          },
+          {
+            cls: 'seg-no-port',
+            rate: noPortRate,
+            label: 'ポート空白',
+            swatch: '#dc2626',
+          },
+        ];
+
+        const barNodes = segs.map((s) => {
+          const div = document.createElement('div');
+          div.className = `stacked-seg ${s.cls}`;
+          div.style.width = `${s.rate}%`;
+          if (s.rate >= 9) {
+            div.textContent = `${s.rate}%`;
+          }
+          div.title = `${s.label}: ${s.rate}%`;
+          return div;
+        });
+        overallStackedBar.replaceChildren(...barNodes);
+
+        const legendNodes = segs.map((s) => {
+          const item = document.createElement('div');
+          item.className = 'rate-legend-item';
+          const sw = document.createElement('span');
+          sw.className = 'rate-swatch';
+          sw.style.background = s.swatch;
+          sw.setAttribute('aria-hidden', 'true');
+          const txt = document.createElement('span');
+          txt.textContent = `${s.label}: `;
+          const strong = document.createElement('strong');
+          strong.textContent = `${s.rate}%`;
+          txt.append(strong);
+          item.append(sw, txt);
+          return item;
+        });
+        overallRateLegend.replaceChildren(...legendNodes);
+      }
+
+      function renderHourlyChart(hourlyTrends) {
+        const canvas = document.getElementById('hourlyTrendsChart');
+        if (typeof Chart === 'undefined') {
+          canvas.hidden = true;
+          chartFallbackMsg.hidden = false;
+          chartFallbackMsg.textContent =
+            'グラフ描画ライブラリ（Chart.js）の読み込みに失敗しました。';
+          return;
+        }
+        canvas.hidden = false;
+        chartFallbackMsg.hidden = true;
+
+        const labels = hourlyTrends.map((h) => `${h.hour}時`);
+        const availableData = hourlyTrends.map((h) => h.available_count);
+        const emptyData = hourlyTrends.map((h) => h.empty_count);
+        const noPortData = hourlyTrends.map((h) => h.no_port_count);
+
+        if (hourlyChartInstance) {
+          hourlyChartInstance.destroy();
+          hourlyChartInstance = null;
+        }
+
+        hourlyChartInstance = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: '代替可能',
+                data: availableData,
+                backgroundColor: '#16a34a',
+              },
+              {
+                label: '在庫切れ',
+                data: emptyData,
+                backgroundColor: '#ea580c',
+              },
+              {
+                label: 'ポート空白',
+                data: noPortData,
+                backgroundColor: '#dc2626',
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              tooltip: {
+                callbacks: {
+                  footer(items) {
+                    if (!items.length) return '';
+                    const idx = items[0].dataIndex;
+                    const row = hourlyTrends[idx];
+                    return `合計: ${row.delay_count}件 / 平均遅延: ${row.avg_delay_min}分 / 代替率: ${row.available_rate}%`;
+                  },
+                },
+              },
+            },
+            scales: {
+              x: { stacked: true },
+              y: {
+                stacked: true,
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: '遅延延べ件数',
+                },
+              },
+            },
+          },
+        });
+      }
+
+      function renderRouteTable(routeSummary) {
+        const rows = routeSummary.map((r) => {
+          const tr = document.createElement('tr');
+
+          const th = document.createElement('th');
+          th.scope = 'row';
+          th.textContent = r.route_name;
+
+          const tdCount = document.createElement('td');
+          tdCount.textContent = `${r.delay_count.toLocaleString()}件`;
+
+          const tdAvg = document.createElement('td');
+          tdAvg.textContent = `${r.avg_delay_min}分`;
+
+          const createRateCell = (val, pillClass) => {
+            const td = document.createElement('td');
+            const span = document.createElement('span');
+            span.className = `rate-pill ${pillClass}`;
+            span.textContent = `${val}%`;
+            td.append(span);
+            return td;
+          };
+
+          tr.append(
+            th,
+            tdCount,
+            tdAvg,
+            createRateCell(r.available_rate, 'rate-pill-green'),
+            createRateCell(r.empty_rate, 'rate-pill-orange'),
+            createRateCell(r.no_port_rate, 'rate-pill-red'),
+          );
+          return tr;
+        });
+
+        routeSummaryBody.replaceChildren(...rows);
+      }
+
+      function renderAnalysisDashboard(data) {
+        analysisData = data;
+        analysisStatusMsg.hidden = true;
+        analysisContent.hidden = false;
+
+        renderOverallSummary(data.meta || {});
+        renderProblemStopsSection();
+        renderHourlyChart(data.hourly_trends || []);
+        renderRouteTable(data.route_summary || []);
+
+        requestAnimationFrame(() => {
+          if (analysisMap) {
+            analysisMap.invalidateSize();
+          }
+        });
+      }
+
+      async function loadAnalysisData(forceReload = false) {
+        if (analysisLoading) return;
+        if (analysisData && !forceReload) {
+          requestAnimationFrame(() => {
+            if (analysisMap) analysisMap.invalidateSize();
+          });
+          return;
+        }
+
+        analysisLoading = true;
+        analysisStatusMsg.classList.remove('is-error');
+        analysisStatusMsg.hidden = false;
+        analysisStatusMsg.textContent = 'データ分析を読み込み中...';
+        if (!analysisData) {
+          analysisContent.hidden = true;
+        }
+
+        try {
+          const res = await fetch('/api/analysis', {
+            signal: AbortSignal.timeout(20000),
+          });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          renderAnalysisDashboard(data);
+        } catch (err) {
+          analysisStatusMsg.classList.add('is-error');
+          analysisStatusMsg.hidden = false;
+          analysisStatusMsg.textContent = `分析データの取得に失敗しました: ${err.message}`;
+        } finally {
+          analysisLoading = false;
+        }
+      }
+
+      function activateTab(targetTab) {
+        const isAnalysis = targetTab === tabAnalysisBtn;
+        tabButtons.forEach((btn) => {
+          const selected = btn === targetTab;
+          btn.setAttribute('aria-selected', String(selected));
+          btn.toggleAttribute('focusgroupstart', selected);
+        });
+
+        if (isAnalysis) {
+          setMobileSettingsOpen(false);
+          panelRealtimeEl.hidden = true;
+          panelRealtimeEl.removeAttribute('tabindex');
+          panelAnalysisEl.hidden = false;
+          panelAnalysisEl.setAttribute('tabindex', '0');
+          loadAnalysisData(false);
+        } else {
+          panelAnalysisEl.hidden = true;
+          panelAnalysisEl.removeAttribute('tabindex');
+          panelRealtimeEl.hidden = false;
+          panelRealtimeEl.setAttribute('tabindex', '0');
+          requestAnimationFrame(() => {
+            map.invalidateSize();
+          });
+        }
+      }
+
+      tabRealtimeBtn.addEventListener('click', () =>
+        activateTab(tabRealtimeBtn),
+      );
+      tabAnalysisBtn.addEventListener('click', () =>
+        activateTab(tabAnalysisBtn),
+      );
+
+      document
+        .querySelector('.app-tablist')
+        .addEventListener('keydown', (event) => {
+          const idx = tabButtons.indexOf(document.activeElement);
+          if (idx === -1) return;
+          let nextIdx = null;
+          if (event.key === 'ArrowRight') {
+            nextIdx = (idx + 1) % tabButtons.length;
+          } else if (event.key === 'ArrowLeft') {
+            nextIdx = (idx - 1 + tabButtons.length) % tabButtons.length;
+          } else if (event.key === 'Home') {
+            nextIdx = 0;
+          } else if (event.key === 'End') {
+            nextIdx = tabButtons.length - 1;
+          }
+          if (nextIdx !== null) {
+            event.preventDefault();
+            tabButtons[nextIdx].focus();
+          }
+        });
+
+      document.querySelectorAll('.issue-filter-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          currentIssueFilter = btn.dataset.issueFilter || 'all';
+          document.querySelectorAll('.issue-filter-btn').forEach((b) => {
+            b.setAttribute('aria-pressed', String(b === btn));
+          });
+          renderProblemStopsSection();
+        });
+      });
+
+      analysisReloadBtn.addEventListener('click', () =>
+        loadAnalysisData(true),
+      );
     </script>
     <script type="module">
       if (!Object.hasOwn(HTMLElement.prototype, 'popover')) {
