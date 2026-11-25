@@ -42,7 +42,7 @@ GBFS_PROVIDERS = {
         "status_url": "https://api-public.odpt.org/api/v4/gbfs/hellocycling/station_status.json",
     },
     "docomo-cycle": {
-        "label": "ドコモ・バイクシェア",
+        "label": "ドコモ・バイクシェア（NOLL）",
         "info_url": "https://api-public.odpt.org/api/v4/gbfs/docomo-cycle/station_information.json",
         "status_url": "https://api-public.odpt.org/api/v4/gbfs/docomo-cycle/station_status.json",
     },
@@ -386,7 +386,80 @@ def get_map_data(
         stop_ports_cache[sid] = near_list
         return near_list
 
-    # 各遅延バス停から半径300m以内のポート・空き状況、最寄りポート、下流バス停との所要時間比較を算出
+    def build_comparisons_for_origin_port(orig_p: dict, selected_dst: list[dict]) -> list[dict]:
+        """指定された貸出ポートを出発地として各代表下流バス停との所要時間比較を算出する。"""
+        prov_key = orig_p["provider"]
+        walk1_raw = (orig_p["raw_distance_m"] * DETOUR_FACTOR) / WALK_SPEED_M_PER_MIN
+        walk_to_port_min = max(1, math.ceil(walk1_raw))
+        results = []
+
+        for dst in selected_dst:
+            bus_eta_min = max(1, math.ceil((dst["arrival_ts"] - feed_ts) / 60))
+            dst_near_ports = get_ports_near_stop(dst["stop_id"])
+            same_prov_dst_ports = [
+                (d_m, p) for d_m, p in dst_near_ports if p["provider"] == prov_key
+            ]
+            total_docks_300m = sum(p["docks"] for _, p in same_prov_dst_ports)
+            returnable_dst_ports = [
+                (d_m, p) for d_m, p in same_prov_dst_ports if p["docks"] >= 1
+            ]
+
+            if not returnable_dst_ports:
+                results.append(
+                    {
+                        "stop_id": dst["stop_id"],
+                        "stop_name": dst["stop_name"],
+                        "straight_distance_m": dst["straight_distance_m"],
+                        "bus_eta_min": bus_eta_min,
+                        "returnable": False,
+                        "provider": prov_key,
+                        "provider_label": orig_p["provider_label"],
+                        "origin_port_name": orig_p["name"],
+                        "origin_station_id": orig_p["station_id"],
+                        "bike_total_min": None,
+                        "time_diff_min": None,
+                        "dest_docks_300m": 0,
+                        "dest_port_name": None,
+                        "dest_port_docks": 0,
+                        "dest_port_distance_m": None,
+                    }
+                )
+                continue
+
+            dst_port_dist_m, dst_p = returnable_dst_ports[0]
+            ride_straight_m = haversine_m(
+                orig_p["lat"], orig_p["lon"], dst_p["lat"], dst_p["lon"]
+            )
+            ride_raw = (ride_straight_m * DETOUR_FACTOR) / BIKE_SPEED_M_PER_MIN
+            walk2_raw = (dst_port_dist_m * DETOUR_FACTOR) / WALK_SPEED_M_PER_MIN
+            bike_total_min = max(1, math.ceil(walk1_raw + ride_raw + walk2_raw))
+
+            results.append(
+                {
+                    "stop_id": dst["stop_id"],
+                    "stop_name": dst["stop_name"],
+                    "straight_distance_m": dst["straight_distance_m"],
+                    "bus_eta_min": bus_eta_min,
+                    "time_diff_min": bus_eta_min - bike_total_min,
+                    "returnable": True,
+                    "provider": prov_key,
+                    "provider_label": orig_p["provider_label"],
+                    "origin_port_name": orig_p["name"],
+                    "origin_station_id": orig_p["station_id"],
+                    "bike_total_min": bike_total_min,
+                    "walk_to_port_min": walk_to_port_min,
+                    "ride_min": max(1, math.ceil(ride_raw)),
+                    "walk_from_port_min": max(1, math.ceil(walk2_raw)),
+                    "dest_docks_300m": total_docks_300m,
+                    "dest_port_name": dst_p["name"] or "名称未設定",
+                    "dest_port_docks": dst_p["docks"],
+                    "dest_port_distance_m": int(round(dst_port_dist_m)),
+                }
+            )
+
+        return results
+
+    # 各遅延バス停から半径300m以内のポート・空き状況、最寄り上位3ポート、下流バス停との所要時間比較を算出
     delayed_stops = []
     avoidable_count = 0
     out_of_stock_count = 0
@@ -399,7 +472,6 @@ def get_map_data(
         nearby_bikes = sum(b["bikes"] for _, b in near_ports)
 
         available_candidates = []
-        nearest_origin_by_provider = {}
         for dist_m, b in near_ports:
             if b["bikes"] >= 1:
                 port_entry = {
@@ -417,15 +489,9 @@ def get_map_data(
                     "walk_min": estimate_walk_minutes(dist_m),
                 }
                 available_candidates.append((dist_m, -b["bikes"], port_entry))
-                if b["provider"] not in nearest_origin_by_provider:
-                    nearest_origin_by_provider[b["provider"]] = port_entry
 
         available_candidates.sort(key=lambda x: (x[0], x[1]))
-        available_ports_300m = [
-            {k: v for k, v in c[2].items() if k != "raw_distance_m"}
-            for c in available_candidates
-        ]
-        nearest_port = available_ports_300m[0] if available_ports_300m else None
+        top_raw_ports = [c[2] for c in available_candidates[:3]]
 
         if nearby_bikes >= 1:
             category = "avoidable"
@@ -440,12 +506,12 @@ def get_map_data(
             category_label = "ポート空白・インフラ不足"
             no_port_count += 1
 
-        # 下流バス停への「バス待ち vs シェアサイクル切替」比較計算
+        # 下流バス停への「バス待ち vs シェアサイクル切替」比較計算（上位3ポートそれぞれで算出）
         comparison_trip = None
-        downstream_comparisons = []
+        selected_dst = []
         best_trip = item["best_trip"]
 
-        if category == "avoidable" and best_trip and nearest_origin_by_provider:
+        if category == "avoidable" and best_trip and top_raw_ports:
             selected_dst = select_representative_downstream_stops(
                 best_trip["downstream_candidates"]
             )
@@ -455,102 +521,21 @@ def get_map_data(
                 "delay_min": best_trip["delay_min"],
             }
 
-            primary_provider = (
-                nearest_port["provider"]
-                if nearest_port
-                else next(iter(nearest_origin_by_provider))
+        available_ports_300m = []
+        for raw_p in top_raw_ports:
+            port_comparisons = (
+                build_comparisons_for_origin_port(raw_p, selected_dst)
+                if selected_dst and category == "avoidable"
+                else []
             )
+            clean_p = {k: v for k, v in raw_p.items() if k != "raw_distance_m"}
+            clean_p["downstream_comparisons"] = port_comparisons
+            available_ports_300m.append(clean_p)
 
-            for dst in selected_dst:
-                bus_eta_min = max(1, math.ceil((dst["arrival_ts"] - feed_ts) / 60))
-                dst_near_ports = get_ports_near_stop(dst["stop_id"])
-
-                # 出発側で利用可能な同一事業者ごとに返却枠・所要時間を評価し、返却可能かつ最速のものを採用
-                best_match = None
-                fallback_no_dock_info = None
-
-                for prov_key, orig_p in nearest_origin_by_provider.items():
-                    same_prov_dst_ports = [
-                        (d_m, p)
-                        for d_m, p in dst_near_ports
-                        if p["provider"] == prov_key
-                    ]
-                    total_docks_300m = sum(p["docks"] for _, p in same_prov_dst_ports)
-                    returnable_dst_ports = [
-                        (d_m, p) for d_m, p in same_prov_dst_ports if p["docks"] >= 1
-                    ]
-
-                    if not returnable_dst_ports:
-                        if prov_key == primary_provider or fallback_no_dock_info is None:
-                            fallback_no_dock_info = {
-                                "provider": prov_key,
-                                "provider_label": orig_p["provider_label"],
-                                "origin_port_name": orig_p["name"],
-                                "dest_docks_300m": 0,
-                            }
-                        continue
-
-                    dst_port_dist_m, dst_p = returnable_dst_ports[0]
-                    ride_straight_m = haversine_m(
-                        orig_p["lat"], orig_p["lon"], dst_p["lat"], dst_p["lon"]
-                    )
-
-                    walk1_raw = (orig_p["raw_distance_m"] * DETOUR_FACTOR) / WALK_SPEED_M_PER_MIN
-                    ride_raw = (ride_straight_m * DETOUR_FACTOR) / BIKE_SPEED_M_PER_MIN
-                    walk2_raw = (dst_port_dist_m * DETOUR_FACTOR) / WALK_SPEED_M_PER_MIN
-                    bike_total_min = max(1, math.ceil(walk1_raw + ride_raw + walk2_raw))
-
-                    candidate_match = {
-                        "returnable": True,
-                        "provider": prov_key,
-                        "provider_label": orig_p["provider_label"],
-                        "origin_port_name": orig_p["name"],
-                        "bike_total_min": bike_total_min,
-                        "walk_to_port_min": max(1, math.ceil(walk1_raw)),
-                        "ride_min": max(1, math.ceil(ride_raw)),
-                        "walk_from_port_min": max(1, math.ceil(walk2_raw)),
-                        "dest_docks_300m": total_docks_300m,
-                        "dest_port_name": dst_p["name"] or "名称未設定",
-                        "dest_port_docks": dst_p["docks"],
-                        "dest_port_distance_m": int(round(dst_port_dist_m)),
-                    }
-                    if (
-                        best_match is None
-                        or candidate_match["bike_total_min"] < best_match["bike_total_min"]
-                    ):
-                        best_match = candidate_match
-
-                if best_match is not None:
-                    diff_min = bus_eta_min - best_match["bike_total_min"]
-                    downstream_comparisons.append(
-                        {
-                            "stop_id": dst["stop_id"],
-                            "stop_name": dst["stop_name"],
-                            "straight_distance_m": dst["straight_distance_m"],
-                            "bus_eta_min": bus_eta_min,
-                            "time_diff_min": diff_min,
-                            **best_match,
-                        }
-                    )
-                else:
-                    downstream_comparisons.append(
-                        {
-                            "stop_id": dst["stop_id"],
-                            "stop_name": dst["stop_name"],
-                            "straight_distance_m": dst["straight_distance_m"],
-                            "bus_eta_min": bus_eta_min,
-                            "returnable": False,
-                            "provider": fallback_no_dock_info["provider"],
-                            "provider_label": fallback_no_dock_info["provider_label"],
-                            "origin_port_name": fallback_no_dock_info["origin_port_name"],
-                            "bike_total_min": None,
-                            "time_diff_min": None,
-                            "dest_docks_300m": 0,
-                            "dest_port_name": None,
-                            "dest_port_docks": 0,
-                            "dest_port_distance_m": None,
-                        }
-                    )
+        nearest_port = available_ports_300m[0] if available_ports_300m else None
+        downstream_comparisons = (
+            nearest_port["downstream_comparisons"] if nearest_port else []
+        )
 
         headsigns = sorted(item["departing_headsigns"] or item["all_headsigns"])
 

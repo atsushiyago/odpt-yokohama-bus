@@ -593,23 +593,137 @@
       }
       .nearest-port-box {
         margin-top: 6px;
-        padding: 7px 8px;
-        background: #f0fdf4;
-        border: 1px solid #86efac;
-        border-radius: 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
         font-size: 12px;
         line-height: 1.45;
       }
       .nearest-port-title {
         font-weight: 700;
         color: #137333;
-        margin-bottom: 2px;
+        font-size: 12px;
+      }
+      .port-card-list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .port-card {
+        border: 1.5px solid #cbd5e1;
+        border-radius: 7px;
+        background: #ffffff;
+        padding: 8px 9px;
+        cursor: pointer;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .port-card:hover {
+        border-color: #86efac;
+        background: #f8fafc;
+      }
+      .port-card.is-selected {
+        border: 2px solid #16a34a;
+        background: #f0fdf4;
+        box-shadow: 0 2px 6px rgba(22, 163, 74, 0.14);
+      }
+      .port-card-select-btn {
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .port-card-select-btn:focus-visible {
+        outline: 2px solid #15803d;
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      .port-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .port-card-badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .port-rank-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 10.5px;
+        font-weight: 700;
+        background: #e2e8f0;
+        color: #334155;
+      }
+      .port-card.is-selected .port-rank-badge {
+        background: #15803d;
+        color: #ffffff;
+      }
+      .port-selected-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 10.5px;
+        font-weight: 700;
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+      }
+      .port-provider-tag {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #475569;
+      }
+      .port-card-name {
+        font-weight: 700;
+        font-size: 12.5px;
+        color: #0f172a;
+      }
+      .port-card-meta {
+        font-size: 11.5px;
+        color: #334155;
       }
       .port-action-links {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
         margin-top: 7px;
+      }
+      .comparison-origin-meta {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #166534;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 4px;
+        padding: 3px 6px;
+        margin: 4px 0 5px 0;
+      }
+      @media (max-width: 768px) {
+        .port-card {
+          padding: 8px 9px;
+        }
+        .port-card-select-btn {
+          min-block-size: 44px;
+        }
+        .port-action-btn,
+        .leaflet-container a.port-action-btn {
+          min-block-size: 32px;
+        }
       }
       .bike-popup-actions {
         margin-top: 6px;
@@ -930,6 +1044,35 @@
         font-weight: 700;
         color: #0f172a;
       }
+      .analysis-section-note {
+        margin: -4px 0 12px 0;
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: #475569;
+      }
+      .route-guide-box {
+        margin: 0 0 12px 0;
+        padding: 10px 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #334155;
+      }
+      .route-guide-title {
+        margin: 0 0 6px 0;
+        font-size: 12px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .route-guide-list {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 4px 16px;
+      }
       .analysis-refresh-btn {
         min-block-size: 28px;
         padding: 3px 10px;
@@ -1000,7 +1143,7 @@
         background: #16a34a;
       }
       .seg-empty {
-        background: #ea580c;
+        background: #8e24aa;
       }
       .seg-no-port {
         background: #dc2626;
@@ -1128,9 +1271,9 @@
         border: 1px solid #dc2626;
       }
       .issue-badge-empty {
-        background: #ffedd5;
-        color: #9a3412;
-        border: 1px solid #ea580c;
+        background: #f3e8ff;
+        color: #6b21a8;
+        border: 1px solid #8e24aa;
       }
       .problem-item-meta {
         font-size: 11.5px;
@@ -1156,6 +1299,7 @@
       }
       .analysis-table {
         width: 100%;
+        min-inline-size: 600px;
         border-collapse: collapse;
         font-size: 12.5px;
         white-space: nowrap;
@@ -1165,6 +1309,49 @@
         padding: 8px 10px;
         border-bottom: 1px solid #e2e8f0;
         text-align: right;
+      }
+      .analysis-table th:has(> button) {
+        padding: 0;
+      }
+      .table-sort-btn {
+        width: 100%;
+        min-block-size: 36px;
+        padding: 8px 10px;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 5px;
+      }
+      .table-sort-btn:hover {
+        background: #eef2ff;
+      }
+      .table-sort-btn:focus-visible {
+        outline: 2px solid #1d4ed8;
+        outline-offset: -2px;
+      }
+      .sort-indicator {
+        font-size: 10px;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .analysis-table thead th:not([aria-sort]) .sort-indicator::after {
+        content: '⇅';
+        opacity: 0.45;
+      }
+      .analysis-table thead th[aria-sort="ascending"] .sort-indicator::after {
+        content: '▲';
+      }
+      .analysis-table thead th[aria-sort="descending"] .sort-indicator::after {
+        content: '▼';
+      }
+      .analysis-table thead th[aria-sort] {
+        color: #1d4ed8;
+        background: #eff6ff;
       }
       .analysis-table th:first-child,
       .analysis-table td:first-child {
@@ -1185,8 +1372,29 @@
         background: #f8fafc;
         z-index: 1;
       }
+      .analysis-table thead th:first-child[aria-sort] {
+        background: #eff6ff;
+      }
+      .analysis-table thead th:first-child .table-sort-btn {
+        justify-content: flex-start;
+      }
+      .analysis-table tbody tr {
+        view-transition-name: match-element;
+      }
       .analysis-table tbody tr:hover td {
         background: #f8fafc;
+      }
+      @media (pointer: coarse) {
+        .table-sort-btn {
+          min-block-size: 44px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+          animation: none;
+        }
       }
       .rate-pill {
         display: inline-block;
@@ -1199,9 +1407,9 @@
         background: #dcfce7;
         color: #166534;
       }
-      .rate-pill-orange {
-        background: #ffedd5;
-        color: #9a3412;
+      .rate-pill-purple {
+        background: #f3e8ff;
+        color: #6b21a8;
       }
       .rate-pill-red {
         background: #fee2e2;
@@ -1871,7 +2079,7 @@
             <span class="dot-slot" aria-hidden="true">
               <span class="dot dot-sm dot-docomo"></span>
             </span>
-            <span class="legend-label">ドコモ・バイクシェア（空きあり）</span>
+            <span class="legend-label">ドコモ・バイクシェア（NOLL）（空きあり）</span>
           </div>
           <div class="legend-item">
             <span class="dot-slot" aria-hidden="true">
@@ -2066,11 +2274,11 @@
             </div>
           </section>
 
-          <!-- (2) 常習課題バス停マップ＆ランキング -->
+          <!-- (2) 自転車で代替しづらい遅延バス停マップ＆ランキング -->
           <section class="analysis-card" aria-labelledby="problem-stops-title">
             <div class="analysis-section-header">
               <h2 id="problem-stops-title" class="analysis-section-title">
-                常習課題バス停マップ＆ランキング
+                自転車で代替しづらい遅延バス停マップ＆ランキング
               </h2>
               <div
                 class="filter-btn-group"
@@ -2103,12 +2311,15 @@
                 </button>
               </div>
             </div>
+            <p class="analysis-section-note">
+              遅延時に「ポート空白」または「空き0台」で自転車に乗り換えられなかった延べ回数が多い上位30バス停です。
+            </p>
             <div class="problem-split">
               <div
                 id="analysisMap"
                 class="analysis-map"
                 role="application"
-                aria-label="常習課題バス停マップ"
+                aria-label="自転車で代替しづらい遅延バス停マップ"
               ></div>
               <div class="problem-list-pane">
                 <ol id="problemStopsList" class="problem-list" role="list"></ol>
@@ -2120,9 +2331,12 @@
           <section class="analysis-card" aria-labelledby="hourly-chart-title">
             <div class="analysis-section-header">
               <h2 id="hourly-chart-title" class="analysis-section-title">
-                時間帯別の遅延・代替状況（0時〜23時）
+                時間帯別の遅延・代替状況
               </h2>
             </div>
+            <p class="analysis-section-note">
+              15分ごとの観測結果を集計しています（各棒にカーソルを合わせると平均遅延・代替率を確認できます）。
+            </p>
             <div class="chart-wrap">
               <canvas
                 id="hourlyTrendsChart"
@@ -2137,28 +2351,134 @@
             </div>
           </section>
 
-          <!-- (4) 系統別代替ポテンシャル比較テーブル -->
+          <!-- (4) 系統別の遅延と自転車代替状況テーブル -->
           <section class="analysis-card" aria-labelledby="route-table-title">
             <div class="analysis-section-header">
               <h2 id="route-table-title" class="analysis-section-title">
-                系統別代替ポテンシャル比較
+                系統別の遅延と自転車代替状況
               </h2>
             </div>
+            <p class="analysis-section-note">
+              列見出しをクリックすると昇順・降順を切り替えられます。
+            </p>
+            <div class="route-guide-box">
+              <div class="route-guide-title">数値の見方</div>
+              <ul class="route-guide-list">
+                <li>
+                  <strong>遅延件数：</strong>15分ごとの観測で遅延バス停を通過した延べ回数（※停留所数が多い系統ほど大きくなります）
+                </li>
+                <li>
+                  <strong>代替可能率：</strong>高いほど「そのまま自転車への乗り換え案内が効きやすい系統」
+                </li>
+                <li>
+                  <strong>空き0台率：</strong>高いほど「ポートはあるため車両の再配置・補充で改善しやすい系統」
+                </li>
+                <li>
+                  <strong>ポート空白率：</strong>高いほど「半径300m内にポートがなく新設検討の余地がある系統」
+                </li>
+              </ul>
+            </div>
+            <div
+              id="routeSortStatus"
+              class="visually-hidden"
+              role="status"
+              aria-live="polite"
+            ></div>
             <div
               tabindex="0"
               role="region"
               aria-labelledby="route-table-title"
               class="analysis-table-wrap"
             >
-              <table class="analysis-table">
+              <table id="routeAnalysisTable" class="analysis-table">
+                <caption class="visually-hidden">
+                  系統別の遅延と自転車代替状況（上位30系統）
+                </caption>
                 <thead>
                   <tr>
-                    <th scope="col">系統名</th>
-                    <th scope="col">遅延件数</th>
-                    <th scope="col">平均遅延</th>
-                    <th scope="col">代替可能率</th>
-                    <th scope="col">空き0台率</th>
-                    <th scope="col">ポート空白率</th>
+                    <th scope="col" data-type="text" data-sort-key="route_name">
+                      <button
+                        type="button"
+                        class="table-sort-btn"
+                        commandfor="routeAnalysisTable"
+                        command="--sort"
+                      >
+                        <span>系統名</span>
+                        <span class="sort-indicator" aria-hidden="true"></span>
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      data-type="number"
+                      data-sort-key="delay_count"
+                      aria-sort="descending"
+                    >
+                      <button
+                        type="button"
+                        class="table-sort-btn"
+                        commandfor="routeAnalysisTable"
+                        command="--sort"
+                      >
+                        <span>遅延件数</span>
+                        <span class="sort-indicator" aria-hidden="true"></span>
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      data-type="number"
+                      data-sort-key="avg_delay_min"
+                    >
+                      <button
+                        type="button"
+                        class="table-sort-btn"
+                        commandfor="routeAnalysisTable"
+                        command="--sort"
+                      >
+                        <span>平均遅延</span>
+                        <span class="sort-indicator" aria-hidden="true"></span>
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      data-type="number"
+                      data-sort-key="available_rate"
+                    >
+                      <button
+                        type="button"
+                        class="table-sort-btn"
+                        commandfor="routeAnalysisTable"
+                        command="--sort"
+                      >
+                        <span>代替可能率</span>
+                        <span class="sort-indicator" aria-hidden="true"></span>
+                      </button>
+                    </th>
+                    <th scope="col" data-type="number" data-sort-key="empty_rate">
+                      <button
+                        type="button"
+                        class="table-sort-btn"
+                        commandfor="routeAnalysisTable"
+                        command="--sort"
+                      >
+                        <span>空き0台率</span>
+                        <span class="sort-indicator" aria-hidden="true"></span>
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      data-type="number"
+                      data-sort-key="no_port_rate"
+                    >
+                      <button
+                        type="button"
+                        class="table-sort-btn"
+                        commandfor="routeAnalysisTable"
+                        command="--sort"
+                      >
+                        <span>ポート空白率</span>
+                        <span class="sort-indicator" aria-hidden="true"></span>
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody id="routeSummaryBody"></tbody>
@@ -2223,6 +2543,24 @@
       const routeCollator = new Intl.Collator('ja', { numeric: true });
       let cachedData = null;
       let selectedStopId = null;
+      let selectedPortIndex = 0;
+
+      function getSelectablePorts(stop) {
+        if (!stop) return [];
+        if (
+          Array.isArray(stop.available_ports_300m) &&
+          stop.available_ports_300m.length > 0
+        ) {
+          return stop.available_ports_300m.slice(0, 3);
+        }
+        return stop.nearest_port ? [stop.nearest_port] : [];
+      }
+
+      function getSelectedPort(stop) {
+        const ports = getSelectablePorts(stop);
+        if (ports.length === 0) return null;
+        return ports[selectedPortIndex] || ports[0];
+      }
 
       const settingsPanel = document.getElementById('settingsPanel');
       const mobileSettingsToggleBtn = document.getElementById(
@@ -2261,12 +2599,12 @@
         routeHighlightLayer.clearLayers();
       }
 
-      function showStopSelectionHighlight(stop) {
+      function showStopSelectionHighlight(stop, activePort = null) {
         clearRouteHighlight();
         const stopRadius = Math.min(18, 6 + stop.max_delay_min * 0.6);
+        const np = activePort || getSelectedPort(stop);
 
-        if (stop.category === 'avoidable' && stop.nearest_port) {
-          const np = stop.nearest_port;
+        if (stop.category === 'avoidable' && np) {
           const coords = [
             [stop.lat, stop.lon],
             [np.lat, np.lon],
@@ -2403,7 +2741,7 @@
         return wrap;
       }
 
-      function createComparisonSection(s) {
+      function createComparisonSection(s, activePort = null) {
         const box = document.createElement('div');
         box.className = 'comparison-box';
         box.append(
@@ -2412,6 +2750,16 @@
             'comparison-title',
           ),
         );
+
+        const originPort = activePort || getSelectedPort(s);
+        if (originPort) {
+          box.append(
+            createLine(
+              `出発ポート: ${originPort.name}（${originPort.provider_label} / 徒歩約${originPort.walk_min}分）`,
+              'comparison-origin-meta',
+            ),
+          );
+        }
 
         if (s.comparison_trip) {
           const ct = s.comparison_trip;
@@ -2424,7 +2772,10 @@
           );
         }
 
-        const comparisons = s.downstream_comparisons || [];
+        const comparisons =
+          originPort && Array.isArray(originPort.downstream_comparisons)
+            ? originPort.downstream_comparisons
+            : s.downstream_comparisons || [];
         if (comparisons.length === 0) {
           box.append(
             createLine(
@@ -2515,6 +2866,50 @@
         return `${formatted.join(' / ')} 方面`;
       }
 
+      function updateSelectedPortUI(stop, activeIndex) {
+        const ports = getSelectablePorts(stop);
+        const clampedIdx =
+          activeIndex >= 0 && activeIndex < ports.length ? activeIndex : 0;
+        selectedPortIndex = clampedIdx;
+        const activePort = ports[clampedIdx] || null;
+
+        stopDetailBody.querySelectorAll('.port-card').forEach((cardEl) => {
+          const cardIdx = Number(cardEl.dataset.portIndex);
+          const isSelected = cardIdx === clampedIdx;
+          cardEl.classList.toggle('is-selected', isSelected);
+
+          const selectBtn = cardEl.querySelector('.port-card-select-btn');
+          if (selectBtn) {
+            selectBtn.setAttribute('aria-pressed', String(isSelected));
+          }
+
+          const badgesWrap = cardEl.querySelector('.port-card-badges');
+          if (badgesWrap) {
+            const existingBadge = badgesWrap.querySelector(
+              '.port-selected-badge',
+            );
+            if (isSelected && !existingBadge) {
+              const selBadge = document.createElement('span');
+              selBadge.className = 'port-selected-badge';
+              selBadge.textContent = '選択中';
+              badgesWrap.append(selBadge);
+            } else if (!isSelected && existingBadge) {
+              existingBadge.remove();
+            }
+          }
+        });
+
+        const cmpSlot = stopDetailBody.querySelector(
+          '#comparisonSectionSlot',
+        );
+        if (cmpSlot && activePort) {
+          cmpSlot.replaceChildren(createComparisonSection(stop, activePort));
+        }
+
+        showStopSelectionHighlight(stop, activePort);
+        fitStopAndPortBounds(stop, activePort);
+      }
+
       function renderStopDetail(s) {
         const cfg = CATEGORY_CONFIG[s.category] || CATEGORY_CONFIG.no_port;
         const nodes = [];
@@ -2545,51 +2940,111 @@
           ),
         );
 
-        if (s.category === 'avoidable' && s.nearest_port) {
-          const np = s.nearest_port;
+        const ports = getSelectablePorts(s);
+        if (s.category === 'avoidable' && ports.length > 0) {
+          if (selectedPortIndex < 0 || selectedPortIndex >= ports.length) {
+            selectedPortIndex = 0;
+          }
+          const activePort = ports[selectedPortIndex];
+
           const portBox = document.createElement('div');
           portBox.className = 'nearest-port-box';
           portBox.append(
-            createLine('最寄りの貸出可能ポート案内', 'nearest-port-title'),
-            createLine(`${np.name}（${np.provider_label}）`),
-            createLine(`貸出可能: ${np.bikes}台`),
             createLine(
-              `距離: 約${np.distance_m}m / 徒歩目安: 約${np.walk_min}分`,
+              `最寄りの貸出可能ポート案内（近い順 ${ports.length}件）`,
+              'nearest-port-title',
             ),
           );
 
-          const actionLinks = document.createElement('div');
-          actionLinks.className = 'port-action-links';
+          const cardList = document.createElement('div');
+          cardList.className = 'port-card-list';
 
-          const safeRentalUrl = toSafeExternalUrl(np.rental_url);
-          if (safeRentalUrl) {
-            actionLinks.append(
-              createExternalLinkBtn(
-                'HELLO CYCLINGで予約・詳細',
-                safeRentalUrl,
-                'port-action-btn-hello',
-              ),
-            );
-          } else {
-            actionLinks.append(
-              createExternalLinkBtn(
-                'ドコモ・バイクシェア公式',
-                'https://docomo-cycle.jp/',
-                'port-action-btn-docomo',
-              ),
-            );
-          }
+          ports.forEach((np, idx) => {
+            const isSelected = idx === selectedPortIndex;
+            const card = document.createElement('div');
+            card.className = `port-card${isSelected ? ' is-selected' : ''}`;
+            card.dataset.portIndex = String(idx);
 
-          actionLinks.append(
-            createExternalLinkBtn(
+            const selectBtn = document.createElement('button');
+            selectBtn.type = 'button';
+            selectBtn.className = 'port-card-select-btn';
+            selectBtn.setAttribute('aria-pressed', String(isSelected));
+
+            const topRow = document.createElement('div');
+            topRow.className = 'port-card-top';
+
+            const badgesWrap = document.createElement('span');
+            badgesWrap.className = 'port-card-badges';
+
+            const rankBadge = document.createElement('span');
+            rankBadge.className = 'port-rank-badge';
+            rankBadge.textContent = `${idx + 1}位`;
+            badgesWrap.append(rankBadge);
+
+            if (isSelected) {
+              const selBadge = document.createElement('span');
+              selBadge.className = 'port-selected-badge';
+              selBadge.textContent = '選択中';
+              badgesWrap.append(selBadge);
+            }
+
+            const provTag = document.createElement('span');
+            provTag.className = 'port-provider-tag';
+            provTag.textContent = np.provider_label;
+
+            topRow.append(badgesWrap, provTag);
+
+            const portNameEl = createLine(np.name, 'port-card-name');
+            const portMetaEl = createLine(
+              `貸出可能: ${np.bikes}台 ／ 約${np.distance_m}m（徒歩約${np.walk_min}分）`,
+              'port-card-meta',
+            );
+
+            selectBtn.append(topRow, portNameEl, portMetaEl);
+            card.append(selectBtn);
+
+            const actionLinks = document.createElement('div');
+            actionLinks.className = 'port-action-links';
+
+            const safeRentalUrl = toSafeExternalUrl(np.rental_url);
+            const officialLink = safeRentalUrl
+              ? createExternalLinkBtn(
+                  '公式ページ（予約）',
+                  safeRentalUrl,
+                  'port-action-btn-hello',
+                )
+              : createExternalLinkBtn(
+                  '公式ページ',
+                  'https://docomo-cycle.jp/',
+                  'port-action-btn-docomo',
+                );
+            officialLink.addEventListener('click', (e) => e.stopPropagation());
+
+            const walkLink = createExternalLinkBtn(
               'Googleマップで徒歩ルート',
               buildWalkingRouteUrl(s.lat, s.lon, np.lat, np.lon),
               'port-action-btn-walk',
-            ),
-          );
+            );
+            walkLink.addEventListener('click', (e) => e.stopPropagation());
 
-          portBox.append(actionLinks);
-          nodes.push(portBox, createComparisonSection(s));
+            actionLinks.append(officialLink, walkLink);
+            card.append(actionLinks);
+
+            card.addEventListener('click', (e) => {
+              if (e.target.closest('a')) return;
+              updateSelectedPortUI(s, idx);
+            });
+
+            cardList.append(card);
+          });
+
+          portBox.append(cardList);
+
+          const cmpSlot = document.createElement('div');
+          cmpSlot.id = 'comparisonSectionSlot';
+          cmpSlot.append(createComparisonSection(s, activePort));
+
+          nodes.push(portBox, cmpSlot);
         } else if (s.category === 'out_of_stock') {
           nodes.push(
             createLine(
@@ -2647,10 +3102,11 @@
         };
       }
 
-      function fitStopAndPortBounds(stop) {
+      function fitStopAndPortBounds(stop, activePort = null) {
         const points = [[stop.lat, stop.lon]];
-        if (stop.category === 'avoidable' && stop.nearest_port) {
-          points.push([stop.nearest_port.lat, stop.nearest_port.lon]);
+        const np = activePort || getSelectedPort(stop);
+        if (stop.category === 'avoidable' && np) {
+          points.push([np.lat, np.lon]);
         }
         const bounds = L.latLngBounds(points);
         const { paddingTopLeft, paddingBottomRight } = computeSafeFitPadding();
@@ -2667,11 +3123,14 @@
         });
       }
 
-      function selectStop(stop, { moveMap = true } = {}) {
+      function selectStop(stop, { moveMap = true, resetPort = true } = {}) {
         map.closePopup();
         // スマホ幅で「設定・凡例」が開いていれば自動で閉じる
         setMobileSettingsOpen(false);
 
+        if (resetPort) {
+          selectedPortIndex = 0;
+        }
         selectedStopId = stop.stop_id;
         renderStopDetail(stop);
         stopDetailPanel.hidden = false;
@@ -2685,14 +3144,16 @@
           realtimePanel.style.setProperty('--detail-sheet-height', `${sheetH}px`);
         }
 
-        showStopSelectionHighlight(stop);
+        const activePort = getSelectedPort(stop);
+        showStopSelectionHighlight(stop, activePort);
         if (moveMap) {
-          fitStopAndPortBounds(stop);
+          fitStopAndPortBounds(stop, activePort);
         }
       }
 
       function closeStopDetail() {
         selectedStopId = null;
+        selectedPortIndex = 0;
         clearRouteHighlight();
         stopDetailPanel.hidden = true;
         const realtimePanel = document.getElementById('panel-realtime');
@@ -2839,7 +3300,7 @@
             (s) => s.stop_id === selectedStopId,
           );
           if (updatedSelected) {
-            selectStop(updatedSelected, { moveMap: false });
+            selectStop(updatedSelected, { moveMap: false, resetPort: false });
           } else {
             closeStopDetail();
           }
@@ -3309,8 +3770,8 @@
         const boundsPoints = [];
         const listItems = filtered.map((ps, idx) => {
           const isNoPort = ps.issue_type === 'no_port';
-          const fillColor = isNoPort ? '#dc2626' : '#ea580c';
-          const borderColor = isNoPort ? '#7f1d1d' : '#9a3412';
+          const fillColor = isNoPort ? '#dc2626' : '#8e24aa';
+          const borderColor = isNoPort ? '#7f1d1d' : '#4a148c';
           const radius = Math.min(16, 7 + Math.sqrt(ps.delay_count) * 1.4);
 
           const marker = L.circleMarker([ps.lat, ps.lon], {
@@ -3407,7 +3868,7 @@
             cls: 'seg-empty',
             rate: emptyRate,
             label: '空き0台（貸出不可）',
-            swatch: '#ea580c',
+            swatch: '#8e24aa',
           },
           {
             cls: 'seg-no-port',
@@ -3482,7 +3943,7 @@
               {
                 label: '空き0台（貸出不可）',
                 data: emptyData,
-                backgroundColor: '#ea580c',
+                backgroundColor: '#8e24aa',
               },
               {
                 label: 'ポート空白',
@@ -3528,22 +3989,116 @@
         });
       }
 
+      const routeAnalysisTable = document.getElementById('routeAnalysisTable');
+      const routeSortStatusEl = document.getElementById('routeSortStatus');
+      const routeTableCollator = new Intl.Collator('ja', {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      let routeSortState = { key: 'delay_count', direction: 'descending' };
+
+      function sortRouteRowsDom(rows, colIndex, type, direction) {
+        const factor = direction === 'ascending' ? 1 : -1;
+        const getVal = (row) => {
+          const cell = row.cells[colIndex];
+          return cell.dataset.value ?? cell.textContent.trim();
+        };
+        return rows.sort((a, b) => {
+          const va = getVal(a);
+          const vb = getVal(b);
+          if (type === 'number') {
+            return factor * (Number(va) - Number(vb));
+          }
+          return factor * routeTableCollator.compare(va, vb);
+        });
+      }
+
+      function applyRouteTableSort(th, direction, { announce = true } = {}) {
+        for (const header of routeAnalysisTable.tHead.rows[0].cells) {
+          header.removeAttribute('aria-sort');
+        }
+        th.setAttribute('aria-sort', direction);
+        routeSortState = {
+          key: th.dataset.sortKey || 'delay_count',
+          direction,
+        };
+
+        const sortedRows = sortRouteRowsDom(
+          [...routeSummaryBody.rows],
+          th.cellIndex,
+          th.dataset.type || 'text',
+          direction,
+        );
+
+        const moveRows = () => {
+          for (const row of sortedRows) {
+            if (typeof routeSummaryBody.moveBefore === 'function') {
+              routeSummaryBody.moveBefore(row, null);
+            } else {
+              routeSummaryBody.append(row);
+            }
+          }
+        };
+
+        if (announce && typeof routeAnalysisTable.startViewTransition === 'function') {
+          routeAnalysisTable.startViewTransition(moveRows);
+        } else {
+          moveRows();
+        }
+
+        if (announce && routeSortStatusEl) {
+          const dirLabel = direction === 'ascending' ? '昇順' : '降順';
+          routeSortStatusEl.textContent = `${th.textContent.trim()}で${dirLabel}に並べ替え（${sortedRows.length}件）`;
+        }
+      }
+
+      function handleRouteSortTrigger(button) {
+        const th = button.closest('th');
+        if (!th) return;
+        const direction =
+          th.getAttribute('aria-sort') === 'ascending'
+            ? 'descending'
+            : 'ascending';
+        applyRouteTableSort(th, direction, { announce: true });
+      }
+
+      routeAnalysisTable.addEventListener('command', (event) => {
+        if (event.command === '--sort' && event.source) {
+          handleRouteSortTrigger(event.source);
+        }
+      });
+
+      if (!('commandForElement' in HTMLButtonElement.prototype)) {
+        for (const btn of routeAnalysisTable.tHead.querySelectorAll(
+          'button[command="--sort"]',
+        )) {
+          btn.addEventListener('click', () => {
+            if ('commandForElement' in HTMLButtonElement.prototype) return;
+            handleRouteSortTrigger(btn);
+          });
+        }
+      }
+
       function renderRouteTable(routeSummary) {
         const rows = routeSummary.map((r) => {
           const tr = document.createElement('tr');
 
           const th = document.createElement('th');
           th.scope = 'row';
+          th.dataset.value = r.route_name;
           th.textContent = r.route_name;
 
           const tdCount = document.createElement('td');
+          tdCount.dataset.value = String(r.delay_count);
           tdCount.textContent = `${r.delay_count.toLocaleString()}件`;
 
           const tdAvg = document.createElement('td');
+          tdAvg.dataset.value = String(r.avg_delay_min);
           tdAvg.textContent = `${r.avg_delay_min}分`;
 
           const createRateCell = (val, pillClass) => {
             const td = document.createElement('td');
+            td.dataset.value = String(val);
             const span = document.createElement('span');
             span.className = `rate-pill ${pillClass}`;
             span.textContent = `${val}%`;
@@ -3556,13 +4111,22 @@
             tdCount,
             tdAvg,
             createRateCell(r.available_rate, 'rate-pill-green'),
-            createRateCell(r.empty_rate, 'rate-pill-orange'),
+            createRateCell(r.empty_rate, 'rate-pill-purple'),
             createRateCell(r.no_port_rate, 'rate-pill-red'),
           );
           return tr;
         });
 
         routeSummaryBody.replaceChildren(...rows);
+
+        const activeHeader = routeAnalysisTable.tHead.querySelector(
+          `th[data-sort-key="${routeSortState.key}"]`,
+        );
+        if (activeHeader) {
+          applyRouteTableSort(activeHeader, routeSortState.direction, {
+            announce: false,
+          });
+        }
       }
 
       function renderAnalysisDashboard(data = analysisData) {
