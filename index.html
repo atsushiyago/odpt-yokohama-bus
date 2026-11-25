@@ -125,7 +125,7 @@
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         font-size: 13px;
         width: 350px;
-        max-height: calc(100dvh - var(--tab-bar-height) - 24px);
+        max-height: calc(100dvh - var(--tab-bar-height) - 88px);
         overflow-y: auto;
         box-sizing: border-box;
         line-height: 1.5;
@@ -1298,6 +1298,256 @@
           padding: 5px 11px;
         }
       }
+
+      /* 現在地へ移動ボタン＆トースト通知 */
+      @property --arc-start {
+        syntax: "<angle>";
+        inherits: false;
+        initial-value: 0deg;
+      }
+      @property --arc-end {
+        syntax: "<angle>";
+        inherits: false;
+        initial-value: 158deg;
+      }
+      @property --progress-dash-animation {
+        syntax: "*";
+        inherits: false;
+        initial-value: , locate-dash 2.2s ease-in-out infinite;
+      }
+
+      .locate-btn {
+        position: absolute;
+        bottom: 26px;
+        right: 12px;
+        z-index: 1000;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-inline-size: 44px;
+        min-block-size: 44px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 23, 42, 0.2);
+        background: rgba(255, 255, 255, 0.97);
+        color: #0f172a;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.22);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease,
+          bottom 0.2s ease;
+      }
+      .locate-btn:hover:not(:disabled) {
+        background: #eff6ff;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+      }
+      .locate-btn:disabled {
+        cursor: progress;
+        opacity: 0.92;
+      }
+      .locate-btn-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+      .locate-btn-text {
+        text-box: trim-both cap alphabetic;
+      }
+
+      progress.locate-spinner {
+        display: none;
+        --_from: calc(90deg + var(--arc-start, 0deg));
+        --_to: calc(90deg + var(--arc-end, 158deg));
+        --size: 18px;
+        --thickness: 2.5px;
+        --spinner-color: #2563eb;
+        --track-color: #dbeafe;
+        --_used-spinner-duration: 1.2s;
+        position: relative;
+        width: var(--size);
+        height: var(--size);
+        border-radius: 50%;
+        appearance: none;
+        flex-shrink: 0;
+        background: conic-gradient(
+            from var(--_from),
+            var(--spinner-color) calc(var(--_to) - var(--_from)),
+            transparent 0
+          )
+          var(--track-color);
+        animation:
+          locate-spin var(--_used-spinner-duration) linear infinite
+          var(--progress-dash-animation, );
+      }
+      progress.locate-spinner:indeterminate::-webkit-progress-bar {
+        display: none;
+        background: none;
+      }
+      progress.locate-spinner:indeterminate::-webkit-progress-value {
+        display: none;
+        background: none;
+      }
+      progress.locate-spinner:indeterminate::-moz-progress-bar {
+        display: none;
+        background: none;
+      }
+      @supports (background-clip: border-area) {
+        progress.locate-spinner {
+          background-clip: border-area;
+          border: var(--thickness) solid transparent;
+          background-origin: border-box;
+        }
+      }
+      @supports not (background-clip: border-area) {
+        progress.locate-spinner {
+          --clip-boundary: calc(100% - var(--thickness));
+          mask-image: radial-gradient(
+            farthest-side,
+            transparent var(--clip-boundary),
+            black var(--clip-boundary)
+          );
+          border: 0;
+        }
+      }
+      .locate-btn[aria-busy="true"] .locate-btn-icon {
+        display: none;
+      }
+      .locate-btn[aria-busy="true"] progress.locate-spinner {
+        display: inline-block;
+      }
+
+      @keyframes locate-spin {
+        to {
+          rotate: 1turn;
+        }
+      }
+      @keyframes locate-dash {
+        from {
+          --arc-start: 0deg;
+          --arc-end: 3deg;
+        }
+        50% {
+          --arc-start: 100deg;
+          --arc-end: 358deg;
+        }
+        to {
+          --arc-start: 360deg;
+          --arc-end: 363deg;
+        }
+      }
+
+      .toast-region {
+        position: fixed;
+        top: calc(var(--tab-bar-height) + 12px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1300;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: min(380px, calc(100vw - 24px));
+        pointer-events: none;
+      }
+      .app-toast[popover="manual"] {
+        position: relative;
+        inset: auto;
+        margin: 0;
+        pointer-events: auto;
+        box-sizing: border-box;
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #94a3b8;
+        background: #0f172a;
+        color: #ffffff;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.3);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .app-toast:is(:popover-open, .\:popover-open) {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .app-toast.is-warning {
+        background: #7c2d12;
+        border-color: #fdba74;
+      }
+      .app-toast.is-error {
+        background: #7f1d1d;
+        border-color: #fca5a5;
+      }
+      .toast-close-btn {
+        min-inline-size: 28px;
+        min-block-size: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+        padding: 0 6px;
+      }
+      .toast-close-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        progress.locate-spinner {
+          --_used-spinner-duration: 6s;
+          --progress-dash-animation: ;
+          --arc-end: 158deg;
+        }
+        .locate-btn {
+          transition: none;
+        }
+      }
+      @media (forced-colors: active) {
+        .locate-btn,
+        .app-toast[popover="manual"] {
+          border: 2px solid CanvasText;
+        }
+        progress.locate-spinner {
+          forced-color-adjust: none;
+          --spinner-color: CanvasText;
+          --track-color: Canvas;
+        }
+      }
+      @media (max-width: 768px) {
+        .locate-btn {
+          bottom: max(26px, calc(env(safe-area-inset-bottom, 0px) + 22px));
+          right: 12px;
+        }
+        .tab-panel-realtime.has-detail-sheet .locate-btn {
+          bottom: calc(var(--detail-sheet-height, 48dvh) + 12px);
+        }
+        .toast-region {
+          top: calc(
+            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
+              46px
+          );
+        }
+      }
     </style>
   </head>
   <body>
@@ -1561,7 +1811,63 @@
       </div>
       <div id="stopDetailBody" class="detail-body"></div>
     </aside>
+
+    <!-- 現在地へ移動ボタン（リアルタイム検索タブ内・データ分析タブ表示中は非表示） -->
+    <button
+      id="locateBtn"
+      class="locate-btn"
+      type="button"
+      aria-label="現在地へ移動"
+      aria-busy="false"
+    >
+      <svg
+        class="locate-btn-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+      </svg>
+      <progress
+        class="locate-spinner"
+        aria-label="現在地を取得中"
+      ></progress>
+      <span id="locateBtnText" class="locate-btn-text">現在地</span>
+    </button>
     </section>
+
+    <div
+      id="toastRegion"
+      class="toast-region"
+      role="region"
+      aria-label="通知"
+    >
+      <div
+        id="locationToast"
+        class="app-toast"
+        popover="manual"
+        role="status"
+      >
+        <span id="locationToastText"></span>
+        <button
+          id="locationToastCloseBtn"
+          class="toast-close-btn"
+          type="button"
+          popovertarget="locationToast"
+          popovertargetaction="hide"
+          aria-label="通知を閉じる"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+    <p class="visually-hidden">位置情報の通知</p>
+    <div id="toastLiveFallback" class="visually-hidden" aria-live="polite"></div>
 
     <section
       id="panel-analysis"
@@ -1725,7 +2031,17 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script>
-      const map = L.map('map').setView([35.4658, 139.6223], 13);
+      const YOKOHAMA_CENTER = [35.4658, 139.6223];
+      const YOKOHAMA_BOUNDS = {
+        latMin: 35.3,
+        latMax: 35.6,
+        lonMin: 139.46,
+        lonMax: 139.74,
+      };
+      const isInitialMobileViewport = window.innerWidth <= 768;
+      const initialMapZoom = isInitialMobileViewport ? 15 : 13;
+
+      const map = L.map('map').setView(YOKOHAMA_CENTER, initialMapZoom);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
@@ -1733,6 +2049,7 @@
       const bikeLayer = L.layerGroup().addTo(map);
       const busLayer = L.layerGroup().addTo(map);
       const routeHighlightLayer = L.layerGroup().addTo(map);
+      const userLocationLayer = L.layerGroup().addTo(map);
 
       const CATEGORY_CONFIG = {
         avoidable: {
@@ -2217,6 +2534,15 @@
         renderStopDetail(stop);
         stopDetailPanel.hidden = false;
 
+        const realtimePanel = document.getElementById('panel-realtime');
+        realtimePanel.classList.add('has-detail-sheet');
+        if (window.innerWidth <= 768) {
+          const sheetH = Math.round(
+            stopDetailPanel.getBoundingClientRect().height,
+          );
+          realtimePanel.style.setProperty('--detail-sheet-height', `${sheetH}px`);
+        }
+
         showStopSelectionHighlight(stop);
         if (moveMap) {
           fitStopAndPortBounds(stop);
@@ -2227,6 +2553,9 @@
         selectedStopId = null;
         clearRouteHighlight();
         stopDetailPanel.hidden = true;
+        const realtimePanel = document.getElementById('panel-realtime');
+        realtimePanel.classList.remove('has-detail-sheet');
+        realtimePanel.style.removeProperty('--detail-sheet-height');
       }
 
       function getSelectedCategories() {
@@ -2497,6 +2826,210 @@
       });
 
       loadData();
+
+      // =========================================================
+      // 現在地へ移動（横浜市内外判定・トースト通知）
+      // =========================================================
+      const locateBtn = document.getElementById('locateBtn');
+      const locateBtnText = document.getElementById('locateBtnText');
+      const locationToast = document.getElementById('locationToast');
+      const locationToastText = document.getElementById('locationToastText');
+      const locationToastCloseBtn = document.getElementById(
+        'locationToastCloseBtn',
+      );
+      const toastLiveFallback = document.getElementById('toastLiveFallback');
+
+      let toastDismissTimer = null;
+      let userLocationAccuracyCircle = null;
+      let userLocationDot = null;
+      let lastLocateTrigger = null;
+
+      function announceToastText(message) {
+        if (typeof navigator !== 'undefined' && typeof document.ariaNotify === 'function') {
+          document.ariaNotify(message);
+        } else {
+          toastLiveFallback.textContent = '';
+          requestAnimationFrame(() => {
+            toastLiveFallback.textContent = message;
+          });
+        }
+      }
+
+      function hideLocationToast() {
+        if (toastDismissTimer) {
+          clearTimeout(toastDismissTimer);
+          toastDismissTimer = null;
+        }
+        const hadFocusInside = locationToast.contains(document.activeElement);
+        if (typeof locationToast.hidePopover === 'function') {
+          try {
+            if (locationToast.matches(':popover-open')) {
+              locationToast.hidePopover();
+            }
+          } catch {
+            locationToast.classList.remove(':popover-open');
+          }
+        } else {
+          locationToast.classList.remove(':popover-open');
+        }
+        if (hadFocusInside && lastLocateTrigger) {
+          lastLocateTrigger.focus({ preventScroll: true });
+        }
+      }
+
+      function scheduleToastDismiss(delayMs = 5000) {
+        if (toastDismissTimer) {
+          clearTimeout(toastDismissTimer);
+        }
+        toastDismissTimer = setTimeout(() => {
+          if (locationToast.contains(document.activeElement)) {
+            scheduleToastDismiss(2000);
+            return;
+          }
+          hideLocationToast();
+        }, delayMs);
+      }
+
+      function showLocationToast(message, variant = 'warning', durationMs = 5000) {
+        locationToastText.textContent = message;
+        locationToast.classList.remove('is-warning', 'is-error');
+        if (variant === 'warning' || variant === 'error') {
+          locationToast.classList.add(`is-${variant}`);
+        }
+        if (typeof locationToast.showPopover === 'function') {
+          try {
+            if (!locationToast.matches(':popover-open')) {
+              locationToast.showPopover();
+            }
+          } catch {
+            locationToast.classList.add(':popover-open');
+          }
+        } else {
+          locationToast.classList.add(':popover-open');
+        }
+        announceToastText(message);
+        scheduleToastDismiss(durationMs);
+      }
+
+      locationToastCloseBtn.addEventListener('click', () => {
+        hideLocationToast();
+      });
+
+      function setLocateLoading(isLoading) {
+        locateBtn.disabled = isLoading;
+        locateBtn.setAttribute('aria-busy', String(isLoading));
+        locateBtnText.textContent = isLoading ? '取得中...' : '現在地';
+      }
+
+      function moveMapSmooth(latLng, zoom) {
+        const reducedMotion = window.matchMedia(
+          '(prefers-reduced-motion: reduce)',
+        ).matches;
+        if (reducedMotion) {
+          map.setView(latLng, zoom, { animate: false });
+        } else {
+          map.flyTo(latLng, zoom, { duration: 0.55 });
+        }
+      }
+
+      function updateUserLocationMarkers(lat, lon, accuracy) {
+        const accRadius = Math.max(15, Math.min(Number(accuracy) || 30, 500));
+        if (userLocationAccuracyCircle && userLocationDot) {
+          userLocationAccuracyCircle.setLatLng([lat, lon]);
+          userLocationAccuracyCircle.setRadius(accRadius);
+          userLocationDot.setLatLng([lat, lon]);
+        } else {
+          userLocationLayer.clearLayers();
+          userLocationAccuracyCircle = L.circle([lat, lon], {
+            radius: accRadius,
+            color: '#2563eb',
+            weight: 1.5,
+            opacity: 0.55,
+            fillColor: '#3b82f6',
+            fillOpacity: 0.14,
+            interactive: false,
+          }).addTo(userLocationLayer);
+
+          userLocationDot = L.circleMarker([lat, lon], {
+            radius: 7.5,
+            color: '#ffffff',
+            weight: 2.5,
+            fillColor: '#2563eb',
+            fillOpacity: 1,
+          })
+            .bindTooltip('現在地', { direction: 'top', offset: [0, -8] })
+            .addTo(userLocationLayer);
+        }
+      }
+
+      function clearUserLocationMarkers() {
+        userLocationLayer.clearLayers();
+        userLocationAccuracyCircle = null;
+        userLocationDot = null;
+      }
+
+      function isInsideYokohama(lat, lon) {
+        return (
+          lat >= YOKOHAMA_BOUNDS.latMin &&
+          lat <= YOKOHAMA_BOUNDS.latMax &&
+          lon >= YOKOHAMA_BOUNDS.lonMin &&
+          lon <= YOKOHAMA_BOUNDS.lonMax
+        );
+      }
+
+      locateBtn.addEventListener('click', () => {
+        lastLocateTrigger = locateBtn;
+        if (!navigator.geolocation) {
+          showLocationToast(
+            'お使いのブラウザでは位置情報を利用できません',
+            'error',
+          );
+          return;
+        }
+
+        setLocateLoading(true);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setLocateLoading(false);
+            const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+
+            if (isInsideYokohama(lat, lon)) {
+              hideLocationToast();
+              updateUserLocationMarkers(lat, lon, accuracy);
+              moveMapSmooth([lat, lon], 15);
+            } else {
+              clearUserLocationMarkers();
+              showLocationToast(
+                '現在地が横浜市外のため、横浜駅周辺を表示します',
+                'warning',
+                5000,
+              );
+              moveMapSmooth(YOKOHAMA_CENTER, 15);
+            }
+          },
+          (err) => {
+            setLocateLoading(false);
+            let msg =
+              '現在地を取得できませんでした。時間をおいて再度お試しください';
+            if (err && err.code === 1) {
+              msg =
+                '位置情報の取得が許可されていません。端末やブラウザの設定を確認してください';
+            } else if (err && err.code === 2) {
+              msg =
+                '現在地を特定できませんでした。電波状況などを確認してください';
+            } else if (err && err.code === 3) {
+              msg =
+                '現在地の取得がタイムアウトしました。もう一度お試しください';
+            }
+            showLocationToast(msg, 'error', 6000);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000,
+          },
+        );
+      });
 
       // =========================================================
       // タブ切り替え & データ分析タブ実装
