@@ -1,5 +1,6 @@
 import csv
 import io
+import logging
 import math
 import os
 import time
@@ -10,9 +11,11 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from google.transit import gtfs_realtime_pb2
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
@@ -588,3 +591,51 @@ def get_map_data(
         "delayed_stops": delayed_stops,
         "bikeshare_ports": bikes,
     }
+
+
+GITHUB_DISPATCH_URL = (
+    "https://api.github.com/repos/atsushiyago/odpt-bikeshare-collector"
+    "/actions/workflows/collect.yml/dispatches"
+)
+
+
+@app.post("/trigger-collect")
+def trigger_collect():
+    """Cloud Scheduler から GitHub Actions の収集ワークフローを起動する中継エンドポイント。"""
+    github_pat = (os.environ.get("GITHUB_PAT") or "").strip()
+    if not github_pat:
+        raise HTTPException(status_code=500, detail="GITHUB_PAT is not configured")
+
+    headers = {
+        "Authorization": f"Bearer {github_pat}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "odpt-yokohama-bus-scheduler",
+    }
+
+    try:
+        res = requests.post(
+            GITHUB_DISPATCH_URL,
+            headers=headers,
+            json={"ref": "main"},
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        logger.error("GitHub Actions dispatch request failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to reach GitHub API",
+        ) from exc
+
+    if 200 <= res.status_code < 300:
+        return {"status": "dispatched"}
+
+    logger.error(
+        "GitHub Actions dispatch failed: status=%s body=%s",
+        res.status_code,
+        res.text,
+    )
+    raise HTTPException(
+        status_code=502,
+        detail=f"GitHub API returned status {res.status_code}",
+    )
