@@ -1,0 +1,1862 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>横浜市営バス遅延 × シェアサイクル在庫マップ</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1f2937;
+        overflow-wrap: break-word;
+      }
+      #map {
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+      }
+
+      /* モバイル上部ツールバー（PCでは非表示） */
+      .mobile-top-bar {
+        display: none;
+      }
+
+      /* 右上：設定・凡例パネル（PCは常時表示） */
+      .panel {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.96);
+        padding: 12px 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        font-size: 13px;
+        width: 350px;
+        max-height: calc(100dvh - 24px);
+        overflow-y: auto;
+        box-sizing: border-box;
+        line-height: 1.5;
+      }
+      .mobile-panel-close-btn {
+        display: none;
+      }
+
+      /* 左側：バス停詳細専用パネル（バス停クリック時のみ表示） */
+      .detail-panel {
+        position: absolute;
+        top: 82px;
+        left: 12px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.97);
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
+        font-size: 12.5px;
+        width: 320px;
+        max-height: calc(100dvh - 98px);
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+      }
+      .detail-panel[hidden] {
+        display: none !important;
+      }
+
+      @media (forced-colors: active) {
+        .panel,
+        .detail-panel,
+        .spec-popover,
+        .info-btn,
+        .mobile-pill-btn {
+          border: 2px solid CanvasText;
+        }
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0 0 8px 0;
+      }
+      .panel h1 {
+        margin: 0;
+        font-size: 15px;
+        color: #111827;
+        text-wrap: balance;
+      }
+      .info-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-block-size: 26px;
+        padding: 3px 9px 3px 6px;
+        border-radius: 999px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1e40af;
+        font-family: inherit;
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+        white-space: nowrap;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease,
+          color 0.15s ease;
+      }
+      .info-btn:hover {
+        background: #dbeafe;
+        border-color: #60a5fa;
+        color: #1d4ed8;
+      }
+      .info-btn-icon {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 1px solid currentColor;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Georgia, "Times New Roman", serif;
+        font-style: italic;
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .info-btn-text {
+        text-box: trim-both cap alphabetic;
+      }
+
+      /* 仕様説明ポップオーバー */
+      .spec-popover {
+        box-sizing: border-box;
+        width: min(350px, calc(100vw - 24px));
+        max-height: calc(100dvh - 64px);
+        overflow-y: auto;
+        padding: 12px 14px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #1f2937;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.24);
+        font-size: 12.5px;
+        line-height: 1.55;
+      }
+      [popover]:is(:popover-open, .\:popover-open) {
+        display: block;
+      }
+      @supports not selector(:popover-open) {
+        [popover]:not(.\:popover-open) {
+          display: none;
+        }
+      }
+      @media (min-width: 769px) {
+        @supports (position-area: block-end) {
+          .info-btn {
+            anchor-name: --info-trigger;
+          }
+          .spec-popover {
+            position-anchor: --info-trigger;
+            inset: auto;
+            margin: 6px 0 0 0;
+            position-area: block-end span-inline-start;
+            position-try-fallbacks:
+              flip-block,
+              flip-inline,
+              flip-block flip-inline;
+          }
+        }
+        @supports not (position-area: block-end) {
+          .spec-popover {
+            position: fixed;
+            inset: 46px 14px auto auto;
+            margin: 0;
+          }
+        }
+      }
+
+      .spec-popover-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .spec-popover-title {
+        margin: 0;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .spec-close-btn {
+        min-inline-size: 26px;
+        min-block-size: 26px;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #475569;
+        font-size: 16px;
+        line-height: 1;
+        padding: 0 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .spec-close-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+      }
+      .spec-list {
+        margin: 0;
+        padding-left: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .spec-list strong {
+        color: #0f172a;
+      }
+
+      .controls {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .controls label {
+        flex-shrink: 0;
+      }
+      .controls select,
+      .controls button {
+        min-block-size: 28px;
+        font-size: 13px;
+        padding: 2px 8px;
+      }
+      .route-select {
+        flex: 1;
+        min-width: 0;
+      }
+      .controls button {
+        cursor: pointer;
+      }
+      .source-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        min-block-size: 24px;
+      }
+      .source-toggle input[type="checkbox"],
+      .status-filter-checkbox {
+        accent-color: #1769e0;
+        inline-size: 15px;
+        aspect-ratio: 1;
+        margin: 0;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .source-toggle label {
+        cursor: pointer;
+        user-select: none;
+      }
+      :where(
+        select,
+        button,
+        input[type="checkbox"],
+        a:any-link
+      ):focus-visible {
+        outline: 3px solid #1769e0;
+        outline-offset: 2px;
+      }
+      .status-box {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+      .breakdown {
+        margin: 4px 0 4px 6px;
+        padding-left: 8px;
+        border-left: 2px solid #cbd5e1;
+      }
+      .count-avoidable {
+        color: #137333;
+        font-weight: 600;
+      }
+      .count-out-of-stock {
+        color: #6a1b9a;
+        font-weight: 600;
+      }
+      .count-no-port {
+        color: #a50e0e;
+        font-weight: 600;
+      }
+      .filtered-summary {
+        margin-top: 3px;
+        padding-top: 3px;
+        border-top: 1px dashed #cbd5e1;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .fallback-note {
+        color: #9a3412;
+        font-size: 11.5px;
+      }
+      .legend {
+        margin-top: 8px;
+        border-top: 1px solid #cbd5e1;
+        padding-top: 8px;
+        font-size: 12px;
+      }
+      .legend-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .legend-group + .legend-group {
+        margin-top: 7px;
+        padding-top: 7px;
+        border-top: 1px solid #e2e8f0;
+      }
+      .legend-group-title {
+        margin: 0 0 2px 0;
+        font-size: 11px;
+        font-weight: 700;
+        color: #475569;
+        line-height: 1.3;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-block-size: 24px;
+      }
+      .legend-filter-label {
+        cursor: pointer;
+        user-select: none;
+      }
+      .status-filter-checkbox:not(:checked) ~ .legend-label {
+        opacity: 0.5;
+        text-decoration: line-through;
+      }
+      .status-filter-checkbox:not(:checked) ~ .dot-slot {
+        opacity: 0.4;
+      }
+      .legend-label {
+        line-height: 1.35;
+        text-box: trim-both cap alphabetic;
+      }
+      .dot-slot {
+        width: 16px;
+        height: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .dot {
+        display: inline-block;
+        border-radius: 50%;
+        box-sizing: border-box;
+      }
+      .dot-lg {
+        width: 14px;
+        height: 14px;
+      }
+      .dot-sm {
+        width: 8px;
+        height: 8px;
+      }
+      .dot-avoidable {
+        background: #1e8e3e;
+        border: 2px solid #0d652d;
+      }
+      .dot-out-of-stock {
+        background: #8e24aa;
+        border: 2px dashed #4a148c;
+      }
+      .dot-no-port {
+        background: #d93025;
+        border: 2px solid #7f1d1d;
+      }
+      .dot-hello {
+        background: #1a73e8;
+        border: 1px solid #0d47a1;
+      }
+      .dot-docomo {
+        background: #e37400;
+        border: 1px solid #8c4600;
+      }
+      .dot-empty {
+        background: #9aa0a6;
+        border: 1px solid #5f6368;
+      }
+
+      /* 詳細パネル内部パーツ */
+      .detail-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0;
+      }
+      .detail-header-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+      }
+      .detail-close-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        min-block-size: 28px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #1e293b;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .detail-close-btn:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+      .detail-body {
+        padding: 10px 12px 12px 12px;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        line-height: 1.5;
+      }
+      .detail-stop-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 2px 0 2px 0;
+      }
+      .detail-direction-line {
+        font-size: 12px;
+        font-weight: 600;
+        color: #1e40af;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 4px;
+        padding: 2px 7px;
+        margin: 0 0 6px 0;
+        display: inline-block;
+      }
+      .detail-meta-line {
+        font-size: 12.5px;
+        color: #1f2937;
+      }
+      .detail-note-box {
+        margin-top: 8px;
+        padding: 7px 9px;
+        border-radius: 5px;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        font-size: 11.5px;
+      }
+
+      .popup-badge {
+        display: inline-block;
+        padding: 1px 7px;
+        border-radius: 4px;
+        font-size: 11.5px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .popup-badge-avoidable {
+        background: #e6f4ea;
+        color: #137333;
+        border: 1px solid #1e8e3e;
+      }
+      .popup-badge-out-of-stock {
+        background: #f3e5f5;
+        color: #6a1b9a;
+        border: 1px solid #8e24aa;
+      }
+      .popup-badge-no-port {
+        background: #fce8e6;
+        color: #a50e0e;
+        border: 1px solid #d93025;
+      }
+      .nearest-port-box {
+        margin-top: 6px;
+        padding: 7px 8px;
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: 5px;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .nearest-port-title {
+        font-weight: 700;
+        color: #137333;
+        margin-bottom: 2px;
+      }
+      .port-action-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 7px;
+      }
+      .bike-popup-actions {
+        margin-top: 6px;
+      }
+      .port-action-btn,
+      .leaflet-container a.port-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-block-size: 28px;
+        padding: 4px 9px;
+        border-radius: 5px;
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 1.25;
+        text-decoration: none;
+        box-sizing: border-box;
+        cursor: pointer;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease;
+      }
+      .port-action-btn-hello,
+      .leaflet-container a.port-action-btn-hello {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #93c5fd;
+      }
+      .port-action-btn-hello:hover,
+      .leaflet-container a.port-action-btn-hello:hover {
+        background: #dbeafe;
+        border-color: #3b82f6;
+      }
+      .port-action-btn-docomo,
+      .leaflet-container a.port-action-btn-docomo {
+        background: #fff7ed;
+        color: #9a3412;
+        border: 1px solid #fdba74;
+      }
+      .port-action-btn-docomo:hover,
+      .leaflet-container a.port-action-btn-docomo:hover {
+        background: #ffedd5;
+        border-color: #fb923c;
+      }
+      .port-action-btn-walk,
+      .leaflet-container a.port-action-btn-walk {
+        background: #ffffff;
+        color: #1e293b;
+        border: 1px solid #94a3b8;
+      }
+      .port-action-btn-walk:hover,
+      .leaflet-container a.port-action-btn-walk:hover {
+        background: #f1f5f9;
+        border-color: #64748b;
+      }
+
+      .selected-stop-tooltip {
+        background: rgba(15, 23, 42, 0.92);
+        color: #ffffff;
+        border: 1px solid #ffffff;
+        border-radius: 5px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+        white-space: nowrap;
+      }
+      .selected-stop-tooltip::before {
+        border-top-color: rgba(15, 23, 42, 0.92);
+      }
+      .selected-port-tooltip {
+        background: rgba(255, 255, 255, 0.97);
+        color: #137333;
+        border: 1.5px solid #1e8e3e;
+        border-radius: 5px;
+        padding: 2px 8px;
+        font-size: 11.5px;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+        white-space: nowrap;
+        max-width: 240px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .selected-port-tooltip.leaflet-tooltip-bottom::before {
+        border-bottom-color: #1e8e3e;
+      }
+      .selected-port-tooltip.leaflet-tooltip-top::before {
+        border-top-color: #1e8e3e;
+      }
+      .selected-port-tooltip.leaflet-tooltip-left::before {
+        border-left-color: #1e8e3e;
+      }
+      .selected-port-tooltip.leaflet-tooltip-right::before {
+        border-right-color: #1e8e3e;
+      }
+
+      .comparison-box {
+        margin-top: 7px;
+        padding-top: 7px;
+        border-top: 1px solid #cbd5e1;
+        font-size: 11.5px;
+        line-height: 1.45;
+      }
+      .comparison-title {
+        font-weight: 700;
+        font-size: 12px;
+        color: #0f172a;
+      }
+      .comparison-trip-meta {
+        font-size: 11px;
+        color: #475569;
+        margin-bottom: 5px;
+      }
+      .comparison-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .comparison-item {
+        padding: 6px 7px;
+        border-radius: 5px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+      }
+      .comparison-item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 2px;
+      }
+      .comparison-dest-name {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 12px;
+      }
+      .comparison-dist {
+        font-weight: 400;
+        font-size: 11px;
+        color: #64748b;
+        margin-left: 3px;
+      }
+      .cmp-verdict {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 10.5px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .cmp-verdict-bike {
+        background: #e6f4ea;
+        color: #137333;
+        border: 1px solid #1e8e3e;
+      }
+      .cmp-verdict-bus {
+        background: #dbeafe;
+        color: #1d4ed8;
+        border: 1px solid #3b82f6;
+      }
+      .cmp-verdict-tie {
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #94a3b8;
+      }
+      .cmp-verdict-unavailable {
+        background: #fce8e6;
+        color: #a50e0e;
+        border: 1px solid #d93025;
+      }
+      .comparison-times {
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .comparison-docks {
+        font-size: 11px;
+        color: #475569;
+      }
+      .comparison-docks-zero {
+        font-size: 11px;
+        color: #a50e0e;
+        font-weight: 600;
+      }
+      .comparison-empty {
+        color: #64748b;
+        font-size: 11px;
+      }
+
+      /* スマートフォン向けレスポンシブ（最大幅 768px） */
+      @media (max-width: 768px) {
+        /* Leafletズームボタン（左上 10px..44px）と重ならない上部バー */
+        .mobile-top-bar {
+          position: fixed;
+          top: max(10px, env(safe-area-inset-top, 10px));
+          left: 56px;
+          right: 10px;
+          z-index: 1001;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+          pointer-events: none;
+        }
+        .mobile-pill-btn {
+          pointer-events: auto;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          min-block-size: 36px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(15, 23, 42, 0.18);
+          background: rgba(255, 255, 255, 0.96);
+          color: #0f172a;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+          font-family: inherit;
+          font-size: 12.5px;
+          font-weight: 700;
+          line-height: 1;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .mobile-pill-btn[aria-expanded="true"] {
+          background: #eff6ff;
+          border-color: #3b82f6;
+          color: #1d4ed8;
+        }
+        .mobile-pill-btn-info {
+          background: rgba(239, 246, 255, 0.97);
+          border-color: #93c5fd;
+          color: #1e40af;
+        }
+
+        /* 初期状態では設定・凡例パネルを閉じ、地図を全画面表示する */
+        .panel:not(.is-mobile-open) {
+          display: none;
+        }
+        .panel.is-mobile-open {
+          position: fixed;
+          top: calc(max(10px, env(safe-area-inset-top, 10px)) + 44px);
+          left: 10px;
+          right: 10px;
+          width: auto;
+          max-height: 62dvh;
+          overflow-y: auto;
+          z-index: 1002;
+        }
+        .panel .info-btn {
+          display: none;
+        }
+        .mobile-panel-close-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          min-block-size: 30px;
+          padding: 4px 10px;
+          border-radius: 6px;
+          border: 1px solid #cbd5e1;
+          background: #f8fafc;
+          color: #1e293b;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        /* 仕様説明ポップオーバー（スマホ画面上部に収める） */
+        .spec-popover {
+          position: fixed;
+          inset: calc(max(10px, env(safe-area-inset-top, 10px)) + 44px) 10px
+            auto 10px;
+          width: auto;
+          max-width: 420px;
+          max-height: 68dvh;
+          margin: 0 auto;
+        }
+
+        /* バス停詳細パネル：画面下部固定ボトムシート（高さ最大48%） */
+        .detail-panel {
+          position: fixed;
+          top: auto;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          max-height: 48dvh;
+          border-radius: 14px 14px 0 0;
+          border: 1px solid rgba(15, 23, 42, 0.15);
+          box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.22);
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          z-index: 1001;
+        }
+        .detail-header {
+          padding: 10px 14px;
+        }
+        .detail-close-btn {
+          min-block-size: 32px;
+          padding: 4px 12px;
+        }
+        .detail-body {
+          padding: 10px 14px 14px 14px;
+        }
+        .controls select,
+        .controls button {
+          min-block-size: 34px;
+        }
+        .legend-item {
+          min-block-size: 28px;
+        }
+        .port-action-btn,
+        .leaflet-container a.port-action-btn {
+          min-block-size: 34px;
+          padding: 5px 11px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div
+        id="map"
+        role="application"
+        aria-label="横浜市営バス遅延とシェアサイクル在庫地図"
+      ></div>
+    </main>
+
+    <!-- スマホ幅専用の上部コンパクトバー -->
+    <div class="mobile-top-bar" role="toolbar" aria-label="表示メニュー">
+      <button
+        id="mobileSettingsToggleBtn"
+        class="mobile-pill-btn"
+        type="button"
+        aria-controls="settingsPanel"
+        aria-expanded="false"
+      >
+        設定・凡例
+      </button>
+      <button
+        id="mobileInfoBtn"
+        class="mobile-pill-btn mobile-pill-btn-info"
+        type="button"
+        commandfor="specPopover"
+        command="toggle-popover"
+        aria-label="仕様・計算の説明を表示"
+        aria-expanded="false"
+      >
+        <span class="info-btn-icon" aria-hidden="true">i</span>
+        <span class="info-btn-text">仕様・計算</span>
+      </button>
+    </div>
+
+    <!-- 仕様・計算ポップオーバー（PC・スマホ共通） -->
+    <div
+      id="specPopover"
+      class="spec-popover"
+      popover="auto"
+      aria-labelledby="specPopoverTitle"
+    >
+      <div class="spec-popover-header">
+        <h2 id="specPopoverTitle" class="spec-popover-title">
+          表示仕様・計算のしくみ
+        </h2>
+        <button
+          id="specCloseBtn"
+          class="spec-close-btn"
+          type="button"
+          commandfor="specPopover"
+          command="hide-popover"
+          aria-label="仕様説明を閉じる"
+        >
+          ×
+        </button>
+      </div>
+      <ul class="spec-list">
+        <li>
+          <strong>表示対象：</strong
+          >全バス停ではなく、基準時刻の前後（-5分〜+30分）に到着予定で、設定した遅延分数以上の便があるバス停のみを抽出して表示しています。
+        </li>
+        <li>
+          <strong>回避可否の判定：</strong
+          >各遅延バス停から半径300m以内のシェアサイクルポート有無と貸出可能台数をもとに「回避可能」「在庫切れ」「ポート空白」の3つに分類しています。
+        </li>
+        <li>
+          <strong>所要時間の比較計算：</strong
+          >徒歩は直線距離×1.25を分速80m、自転車は直線距離×1.25を分速250m（時速15km相当）で算出し、遅延便の到着予定時刻と比較しています。
+        </li>
+        <li>
+          <strong>事業者マッチングと共同ポート：</strong
+          >GBFSデータの仕様上、貸出ポートと返却ポートは同一事業者同士で判定しています（両社のGBFSに登録されている共同ポートは自動的に対象となります）。
+        </li>
+        <li>
+          <strong>出典：</strong
+          >本アプリは公共交通オープンデータセンター（ODPT）を通じて提供される横浜市交通局、OpenStreet株式会社（HELLO
+          CYCLING）、株式会社ドコモ・バイクシェアのデータを利用しています。
+        </li>
+      </ul>
+    </div>
+
+    <!-- 設定・凡例パネル（PCは右上常時表示、スマホはトグル開閉） -->
+    <aside id="settingsPanel" class="panel" aria-label="表示設定と凡例">
+      <div class="panel-header">
+        <h1>バス遅延 × シェアサイクル</h1>
+        <button
+          id="infoBtn"
+          class="info-btn"
+          type="button"
+          commandfor="specPopover"
+          command="toggle-popover"
+          aria-label="仕様・計算の説明を表示"
+          aria-expanded="false"
+        >
+          <span class="info-btn-icon" aria-hidden="true">i</span>
+          <span class="info-btn-text">仕様・計算</span>
+        </button>
+        <button
+          id="mobileClosePanelBtn"
+          class="mobile-panel-close-btn"
+          type="button"
+          aria-label="設定・凡例パネルを閉じる"
+        >
+          × 閉じる
+        </button>
+      </div>
+
+      <div class="controls">
+        <label for="minDelay">遅延:</label>
+        <select id="minDelay">
+          <option value="3">3分以上</option>
+          <option value="5" selected>5分以上</option>
+          <option value="10">10分以上</option>
+        </select>
+        <button id="reloadBtn" type="button">更新</button>
+      </div>
+
+      <div class="controls">
+        <label for="routeFilter">系統:</label>
+        <select id="routeFilter" class="route-select">
+          <option value="">全系統</option>
+        </select>
+      </div>
+
+      <div class="source-toggle">
+        <input type="checkbox" id="useRealtime" checked />
+        <label for="useRealtime">リアルタイムAPIを使用</label>
+      </div>
+
+      <div id="status" class="status-box" aria-live="polite">読み込み中...</div>
+
+      <div class="legend">
+        <div class="legend-group">
+          <h2 class="legend-group-title">
+            遅延バス停（チェックで表示切替・大きいほど遅延大）
+          </h2>
+          <label class="legend-item legend-filter-label" for="filterAvoidable">
+            <input
+              type="checkbox"
+              id="filterAvoidable"
+              class="status-filter-checkbox"
+              value="avoidable"
+              checked
+            />
+            <span class="dot-slot" aria-hidden="true">
+              <span class="dot dot-lg dot-avoidable"></span>
+            </span>
+            <span class="legend-label">回避可能（300m内に貸出可1台以上）</span>
+          </label>
+          <label class="legend-item legend-filter-label" for="filterOutOfStock">
+            <input
+              type="checkbox"
+              id="filterOutOfStock"
+              class="status-filter-checkbox"
+              value="out_of_stock"
+              checked
+            />
+            <span class="dot-slot" aria-hidden="true">
+              <span class="dot dot-lg dot-out-of-stock"></span>
+            </span>
+            <span class="legend-label"
+              >在庫切れ・再配置不足（ポートあり・在庫0台）</span
+            >
+          </label>
+          <label class="legend-item legend-filter-label" for="filterNoPort">
+            <input
+              type="checkbox"
+              id="filterNoPort"
+              class="status-filter-checkbox"
+              value="no_port"
+              checked
+            />
+            <span class="dot-slot" aria-hidden="true">
+              <span class="dot dot-lg dot-no-port"></span>
+            </span>
+            <span class="legend-label"
+              >ポート空白・インフラ不足（300m内ポート0件）</span
+            >
+          </label>
+        </div>
+
+        <div class="legend-group">
+          <h2 class="legend-group-title">シェアサイクルポート</h2>
+          <div class="legend-item">
+            <span class="dot-slot" aria-hidden="true">
+              <span class="dot dot-sm dot-hello"></span>
+            </span>
+            <span class="legend-label">HELLO CYCLING（在庫あり）</span>
+          </div>
+          <div class="legend-item">
+            <span class="dot-slot" aria-hidden="true">
+              <span class="dot dot-sm dot-docomo"></span>
+            </span>
+            <span class="legend-label">ドコモ・バイクシェア（在庫あり）</span>
+          </div>
+          <div class="legend-item">
+            <span class="dot-slot" aria-hidden="true">
+              <span class="dot dot-sm dot-empty"></span>
+            </span>
+            <span class="legend-label">ポート（貸出可能0台）</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 選択中のバス停詳細パネル（PCは左上側・スマホは下部ボトムシート） -->
+    <aside
+      id="stopDetailPanel"
+      class="detail-panel"
+      aria-label="選択中のバス停詳細"
+      hidden
+    >
+      <div class="detail-header">
+        <span class="detail-header-label">選択中のバス停詳細</span>
+        <button
+          id="closeDetailBtn"
+          class="detail-close-btn"
+          type="button"
+          aria-label="詳細パネルを閉じる"
+        >
+          × 閉じる
+        </button>
+      </div>
+      <div id="stopDetailBody" class="detail-body"></div>
+    </aside>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const map = L.map('map').setView([35.4658, 139.6223], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map);
+
+      const bikeLayer = L.layerGroup().addTo(map);
+      const busLayer = L.layerGroup().addTo(map);
+      const routeHighlightLayer = L.layerGroup().addTo(map);
+
+      const CATEGORY_CONFIG = {
+        avoidable: {
+          label: '回避可能',
+          fillColor: '#1e8e3e',
+          borderColor: '#0d652d',
+          dashArray: null,
+          badgeClass: 'popup-badge popup-badge-avoidable',
+          drawOrder: 1,
+        },
+        out_of_stock: {
+          label: '在庫切れ・再配置不足',
+          fillColor: '#8e24aa',
+          borderColor: '#4a148c',
+          dashArray: '4, 2',
+          badgeClass: 'popup-badge popup-badge-out-of-stock',
+          drawOrder: 2,
+        },
+        no_port: {
+          label: 'ポート空白・インフラ不足',
+          fillColor: '#d93025',
+          borderColor: '#7f1d1d',
+          dashArray: null,
+          badgeClass: 'popup-badge popup-badge-no-port',
+          drawOrder: 3,
+        },
+      };
+
+      const routeCollator = new Intl.Collator('ja', { numeric: true });
+      let cachedData = null;
+      let selectedStopId = null;
+
+      const settingsPanel = document.getElementById('settingsPanel');
+      const mobileSettingsToggleBtn = document.getElementById(
+        'mobileSettingsToggleBtn',
+      );
+      const mobileClosePanelBtn = document.getElementById(
+        'mobileClosePanelBtn',
+      );
+      const stopDetailPanel = document.getElementById('stopDetailPanel');
+      const stopDetailBody = document.getElementById('stopDetailBody');
+      const closeDetailBtn = document.getElementById('closeDetailBtn');
+
+      function setMobileSettingsOpen(open) {
+        settingsPanel.classList.toggle('is-mobile-open', open);
+        mobileSettingsToggleBtn.setAttribute('aria-expanded', String(open));
+      }
+
+      function formatSourceLabel(data) {
+        if (data.source === 'realtime_api') {
+          return 'リアルタイムAPI (ODPT)';
+        }
+        if (data.source === 'local_fallback') {
+          return 'ローカル (.pb フォールバック)';
+        }
+        return 'ローカル (.pb ファイル)';
+      }
+
+      function createLine(text, className = '') {
+        const div = document.createElement('div');
+        if (className) div.className = className;
+        div.textContent = text;
+        return div;
+      }
+
+      function clearRouteHighlight() {
+        routeHighlightLayer.clearLayers();
+      }
+
+      function showStopSelectionHighlight(stop) {
+        clearRouteHighlight();
+        const stopRadius = Math.min(18, 6 + stop.max_delay_min * 0.6);
+
+        if (stop.category === 'avoidable' && stop.nearest_port) {
+          const np = stop.nearest_port;
+          const coords = [
+            [stop.lat, stop.lon],
+            [np.lat, np.lon],
+          ];
+
+          L.polyline(coords, {
+            color: '#ffffff',
+            weight: 6,
+            opacity: 0.92,
+            interactive: false,
+          }).addTo(routeHighlightLayer);
+
+          L.polyline(coords, {
+            color: '#137333',
+            weight: 3.5,
+            dashArray: '7, 6',
+            opacity: 0.98,
+            interactive: false,
+          }).addTo(routeHighlightLayer);
+
+          L.circleMarker([np.lat, np.lon], {
+            radius: 10,
+            color: '#ffffff',
+            weight: 4.5,
+            fillOpacity: 0,
+            interactive: false,
+          }).addTo(routeHighlightLayer);
+
+          // バス停側Tooltip（上方向）と重なりにくい方向を選択
+          let portDir = 'bottom';
+          let portOffset = [0, 11];
+          if (np.lat > stop.lat && np.distance_m < 140) {
+            if (np.distance_m < 65) {
+              const isEast = np.lon >= stop.lon;
+              portDir = isEast ? 'right' : 'left';
+              portOffset = [isEast ? 12 : -12, 0];
+            } else {
+              portDir = 'top';
+              portOffset = [0, -11];
+            }
+          }
+
+          L.circleMarker([np.lat, np.lon], {
+            radius: 10,
+            color: '#137333',
+            weight: 2.5,
+            dashArray: '4, 3',
+            fillOpacity: 0,
+            interactive: false,
+          })
+            .bindTooltip(`${np.name}（${np.bikes}台）`, {
+              permanent: true,
+              direction: portDir,
+              offset: portOffset,
+              className: 'selected-port-tooltip',
+            })
+            .addTo(routeHighlightLayer);
+        }
+
+        // 選択中バス停の強調リング＋バス停名のみのコンパクトTooltip
+        L.circleMarker([stop.lat, stop.lon], {
+          radius: stopRadius + 5,
+          color: '#ffffff',
+          weight: 5,
+          fillOpacity: 0,
+          interactive: false,
+        }).addTo(routeHighlightLayer);
+
+        L.circleMarker([stop.lat, stop.lon], {
+          radius: stopRadius + 5,
+          color: '#0f172a',
+          weight: 2.5,
+          fillOpacity: 0,
+          interactive: false,
+        })
+          .bindTooltip(stop.name, {
+            permanent: true,
+            direction: 'top',
+            offset: [0, -(stopRadius + 7)],
+            className: 'selected-stop-tooltip',
+          })
+          .addTo(routeHighlightLayer);
+      }
+
+      function toSafeExternalUrl(rawUrl) {
+        if (!rawUrl || typeof rawUrl !== 'string') return null;
+        try {
+          const parsed = new URL(rawUrl);
+          if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+            return parsed.href;
+          }
+        } catch {
+          return null;
+        }
+        return null;
+      }
+
+      function createExternalLinkBtn(label, href, variantClass) {
+        const link = document.createElement('a');
+        link.href = href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = `port-action-btn ${variantClass}`;
+        link.textContent = label;
+        return link;
+      }
+
+      function buildWalkingRouteUrl(busLat, busLon, portLat, portLon) {
+        return `https://www.google.com/maps/dir/?api=1&origin=${Number(busLat)},${Number(busLon)}&destination=${Number(portLat)},${Number(portLon)}&travelmode=walking`;
+      }
+
+      function createBikePopup(p) {
+        const wrap = document.createElement('div');
+        wrap.append(
+          createLine(`[${p.provider_label}]`),
+          createLine(p.name || '名称未設定'),
+          createLine(`貸出可: ${p.bikes}台 / 返却可: ${p.docks}枠`),
+        );
+
+        const safeRentalUrl = toSafeExternalUrl(p.rental_url);
+        if (safeRentalUrl) {
+          const actionRow = document.createElement('div');
+          actionRow.className = 'bike-popup-actions';
+          actionRow.append(
+            createExternalLinkBtn(
+              'ポート詳細・予約を開く',
+              safeRentalUrl,
+              'port-action-btn-hello',
+            ),
+          );
+          wrap.append(actionRow);
+        }
+
+        return wrap;
+      }
+
+      function createComparisonSection(s) {
+        const box = document.createElement('div');
+        box.className = 'comparison-box';
+        box.append(
+          createLine(
+            'この便の行き先へ自転車で切り替えた場合',
+            'comparison-title',
+          ),
+        );
+
+        if (s.comparison_trip) {
+          const ct = s.comparison_trip;
+          const headsignPart = ct.headsign ? `（${ct.headsign}）` : '';
+          box.append(
+            createLine(
+              `対象便: ${ct.route_name}${headsignPart}`,
+              'comparison-trip-meta',
+            ),
+          );
+        }
+
+        const comparisons = s.downstream_comparisons || [];
+        if (comparisons.length === 0) {
+          box.append(
+            createLine(
+              '※500m〜5km先の下流バス停がありません（終点付近など）',
+              'comparison-empty',
+            ),
+          );
+          return box;
+        }
+
+        const ul = document.createElement('ul');
+        ul.className = 'comparison-list';
+        ul.setAttribute('role', 'list');
+
+        comparisons.forEach((d) => {
+          const li = document.createElement('li');
+          li.className = 'comparison-item';
+
+          const header = document.createElement('div');
+          header.className = 'comparison-item-header';
+
+          const destWrap = document.createElement('span');
+          destWrap.className = 'comparison-dest-name';
+          destWrap.textContent = d.stop_name;
+          const distSpan = document.createElement('span');
+          distSpan.className = 'comparison-dist';
+          distSpan.textContent = `(${(d.straight_distance_m / 1000).toFixed(1)}km)`;
+          destWrap.append(distSpan);
+
+          const verdict = document.createElement('span');
+          if (!d.returnable) {
+            verdict.className = 'cmp-verdict cmp-verdict-unavailable';
+            verdict.textContent = '返却枠なし（切り替え不可）';
+          } else if (d.bike_total_min < d.bus_eta_min) {
+            verdict.className = 'cmp-verdict cmp-verdict-bike';
+            verdict.textContent = `自転車が${d.bus_eta_min - d.bike_total_min}分早い`;
+          } else if (d.bus_eta_min < d.bike_total_min) {
+            verdict.className = 'cmp-verdict cmp-verdict-bus';
+            verdict.textContent = `バスが${d.bike_total_min - d.bus_eta_min}分早い`;
+          } else {
+            verdict.className = 'cmp-verdict cmp-verdict-tie';
+            verdict.textContent = 'ほぼ同着';
+          }
+
+          header.append(destWrap, verdict);
+          li.append(header);
+
+          if (d.returnable) {
+            li.append(
+              createLine(
+                `バス到着まで ${d.bus_eta_min}分 ／ 自転車なら ${d.bike_total_min}分`,
+                'comparison-times',
+              ),
+              createLine(
+                `返却可能(${d.provider_label}): 300m内 計${d.dest_docks_300m}枠（最寄: ${d.dest_port_name} 空き${d.dest_port_docks}枠）`,
+                'comparison-docks',
+              ),
+            );
+          } else {
+            li.append(
+              createLine(
+                `バス到着まで ${d.bus_eta_min}分 ／ 自転車: 切り替え不可`,
+                'comparison-times',
+              ),
+              createLine(
+                `目的地300m内の返却可能枠(${d.provider_label}): 0枠`,
+                'comparison-docks-zero',
+              ),
+            );
+          }
+
+          ul.append(li);
+        });
+
+        box.append(ul);
+        return box;
+      }
+
+      function formatHeadsignsLabel(headsigns) {
+        if (!Array.isArray(headsigns) || headsigns.length === 0) {
+          return '';
+        }
+        const formatted = headsigns
+          .map((h) => String(h || '').trim())
+          .filter(Boolean)
+          .map((h) => `${h.replace(/\s*行$/, '')}行`);
+        if (formatted.length === 0) return '';
+        return `${formatted.join(' / ')} 方面`;
+      }
+
+      function renderStopDetail(s) {
+        const cfg = CATEGORY_CONFIG[s.category] || CATEGORY_CONFIG.no_port;
+        const nodes = [];
+
+        const badgeRow = document.createElement('div');
+        const badge = document.createElement('span');
+        badge.className = cfg.badgeClass;
+        badge.textContent = s.category_label || cfg.label;
+        badgeRow.append(badge);
+
+        const title = createLine(s.name, 'detail-stop-title');
+        nodes.push(badgeRow, title);
+
+        const directionText = formatHeadsignsLabel(s.headsigns);
+        if (directionText) {
+          nodes.push(createLine(directionText, 'detail-direction-line'));
+        }
+
+        nodes.push(
+          createLine(
+            `最大遅延: ${s.max_delay_min}分（該当${s.delayed_trips}便）`,
+            'detail-meta-line',
+          ),
+          createLine(`該当系統: ${s.routes.join(', ')}`, 'detail-meta-line'),
+          createLine(
+            `半径300m内: 利用可能 ${s.nearby_bikes_300m}台 (${s.nearby_ports_300m}ポート)`,
+            'detail-meta-line',
+          ),
+        );
+
+        if (s.category === 'avoidable' && s.nearest_port) {
+          const np = s.nearest_port;
+          const portBox = document.createElement('div');
+          portBox.className = 'nearest-port-box';
+          portBox.append(
+            createLine('最寄り在庫ありポート案内', 'nearest-port-title'),
+            createLine(`${np.name}（${np.provider_label}）`),
+            createLine(`貸出可能: ${np.bikes}台`),
+            createLine(
+              `距離: 約${np.distance_m}m / 徒歩目安: 約${np.walk_min}分`,
+            ),
+          );
+
+          const actionLinks = document.createElement('div');
+          actionLinks.className = 'port-action-links';
+
+          const safeRentalUrl = toSafeExternalUrl(np.rental_url);
+          if (safeRentalUrl) {
+            actionLinks.append(
+              createExternalLinkBtn(
+                'HELLO CYCLINGで予約・詳細',
+                safeRentalUrl,
+                'port-action-btn-hello',
+              ),
+            );
+          } else {
+            actionLinks.append(
+              createExternalLinkBtn(
+                'ドコモ・バイクシェア公式',
+                'https://docomo-cycle.jp/',
+                'port-action-btn-docomo',
+              ),
+            );
+          }
+
+          actionLinks.append(
+            createExternalLinkBtn(
+              'Googleマップで徒歩ルート',
+              buildWalkingRouteUrl(s.lat, s.lon, np.lat, np.lon),
+              'port-action-btn-walk',
+            ),
+          );
+
+          portBox.append(actionLinks);
+          nodes.push(portBox, createComparisonSection(s));
+        } else if (s.category === 'out_of_stock') {
+          nodes.push(
+            createLine(
+              '半径300m内のポートはすべて貸出中（在庫0台）のため、現在自転車への切り替えはできません。',
+              'detail-note-box',
+            ),
+          );
+        } else {
+          nodes.push(
+            createLine(
+              '半径300m以内にシェアサイクルポートがありません。',
+              'detail-note-box',
+            ),
+          );
+        }
+
+        stopDetailBody.replaceChildren(...nodes);
+        stopDetailBody.scrollTop = 0;
+      }
+
+      function computeSafeFitPadding() {
+        const size = map.getSize();
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+          // スマホ幅：下半分（ボトムシート領域）を避けて上半分中央に収める
+          const sheetHeight = stopDetailPanel.hidden
+            ? 0
+            : stopDetailPanel.getBoundingClientRect().height;
+          const padBottom = Math.max(
+            Math.round(size.y * 0.5),
+            Math.round(sheetHeight + 32),
+          );
+          const padTop = 74;
+          return {
+            paddingTopLeft: [36, padTop],
+            paddingBottomRight: [
+              36,
+              Math.min(padBottom, Math.max(80, size.y - padTop - 90)),
+            ],
+          };
+        }
+
+        const panelRect = settingsPanel.getBoundingClientRect();
+        const detailRect = stopDetailPanel.getBoundingClientRect();
+        let padLeft = Math.round(detailRect.right + 48);
+        let padRight = Math.round(size.x - panelRect.left + 48);
+        if (padLeft + padRight > size.x - 160) {
+          padLeft = 50;
+          padRight = 50;
+        }
+        return {
+          paddingTopLeft: [padLeft, 72],
+          paddingBottomRight: [padRight, 60],
+        };
+      }
+
+      function fitStopAndPortBounds(stop) {
+        const points = [[stop.lat, stop.lon]];
+        if (stop.category === 'avoidable' && stop.nearest_port) {
+          points.push([stop.nearest_port.lat, stop.nearest_port.lon]);
+        }
+        const bounds = L.latLngBounds(points);
+        const { paddingTopLeft, paddingBottomRight } = computeSafeFitPadding();
+        const reducedMotion = window.matchMedia(
+          '(prefers-reduced-motion: reduce)',
+        ).matches;
+
+        map.fitBounds(bounds, {
+          paddingTopLeft,
+          paddingBottomRight,
+          maxZoom: 16,
+          animate: !reducedMotion,
+          duration: 0.45,
+        });
+      }
+
+      function selectStop(stop, { moveMap = true } = {}) {
+        map.closePopup();
+        // スマホ幅で「設定・凡例」が開いていれば自動で閉じる
+        setMobileSettingsOpen(false);
+
+        selectedStopId = stop.stop_id;
+        renderStopDetail(stop);
+        stopDetailPanel.hidden = false;
+
+        showStopSelectionHighlight(stop);
+        if (moveMap) {
+          fitStopAndPortBounds(stop);
+        }
+      }
+
+      function closeStopDetail() {
+        selectedStopId = null;
+        clearRouteHighlight();
+        stopDetailPanel.hidden = true;
+      }
+
+      function getSelectedCategories() {
+        const selected = new Set();
+        document
+          .querySelectorAll('.status-filter-checkbox')
+          .forEach((checkbox) => {
+            if (checkbox.checked) {
+              selected.add(checkbox.value);
+            }
+          });
+        return selected;
+      }
+
+      function updateRouteFilterOptions(delayedStops) {
+        const routeSelect = document.getElementById('routeFilter');
+        const prevValue = routeSelect.value;
+
+        const routeCounts = new Map();
+        delayedStops.forEach((s) => {
+          s.routes.forEach((r) => {
+            routeCounts.set(r, (routeCounts.get(r) || 0) + 1);
+          });
+        });
+
+        const sortedRoutes = [...routeCounts.keys()].sort(
+          routeCollator.compare,
+        );
+
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = `全系統 (${sortedRoutes.length}系統)`;
+
+        const options = [defaultOpt];
+        sortedRoutes.forEach((routeName) => {
+          const opt = document.createElement('option');
+          opt.value = routeName;
+          opt.textContent = `${routeName} (${routeCounts.get(routeName)}停留所)`;
+          options.push(opt);
+        });
+
+        routeSelect.replaceChildren(...options);
+        routeSelect.value = routeCounts.has(prevValue) ? prevValue : '';
+      }
+
+      function renderStatus(statusEl, data, filteredStops, isFiltered) {
+        const nodes = [createLine(`データ種別: ${formatSourceLabel(data)}`)];
+        if (data.fallback_reason) {
+          nodes.push(
+            createLine(`※理由: ${data.fallback_reason}`, 'fallback-note'),
+          );
+        }
+        nodes.push(
+          createLine(`基準時刻: ${data.feed_time}`),
+          createLine(`遅延バス停 合計: ${data.delayed_stop_count}件`),
+        );
+
+        const breakdown = document.createElement('div');
+        breakdown.className = 'breakdown';
+        breakdown.append(
+          createLine(
+            `回避可能（自転車あり）: ${data.avoidable_stop_count}件`,
+            'count-avoidable',
+          ),
+          createLine(
+            `在庫切れ・再配置不足: ${data.out_of_stock_stop_count}件`,
+            'count-out-of-stock',
+          ),
+          createLine(
+            `ポート空白・インフラ不足: ${data.no_port_stop_count}件`,
+            'count-no-port',
+          ),
+        );
+        nodes.push(
+          breakdown,
+          createLine(`シェアサイクルポート: ${data.bikeshare_port_count}件`),
+        );
+
+        if (isFiltered) {
+          nodes.push(
+            createLine(
+              `現在の地図表示: ${filteredStops.length} / ${data.delayed_stop_count}件`,
+              'filtered-summary',
+            ),
+          );
+        }
+
+        statusEl.replaceChildren(...nodes);
+      }
+
+      function applyFiltersAndRender({ keepSelectedStop = false } = {}) {
+        if (!cachedData) return;
+
+        const statusEl = document.getElementById('status');
+        const selectedCategories = getSelectedCategories();
+        const selectedRoute = document.getElementById('routeFilter').value;
+        const isFiltered =
+          selectedCategories.size < 3 || Boolean(selectedRoute);
+
+        map.closePopup();
+        busLayer.clearLayers();
+
+        const filteredStops = cachedData.delayed_stops.filter((s) => {
+          if (!selectedCategories.has(s.category)) return false;
+          if (selectedRoute && !s.routes.includes(selectedRoute)) return false;
+          return true;
+        });
+
+        const orderedStops = filteredStops.toSorted((a, b) => {
+          const orderA = (
+            CATEGORY_CONFIG[a.category] || CATEGORY_CONFIG.no_port
+          ).drawOrder;
+          const orderB = (
+            CATEGORY_CONFIG[b.category] || CATEGORY_CONFIG.no_port
+          ).drawOrder;
+          return orderA - orderB;
+        });
+
+        orderedStops.forEach((s) => {
+          const cfg = CATEGORY_CONFIG[s.category] || CATEGORY_CONFIG.no_port;
+          const radius = Math.min(18, 6 + s.max_delay_min * 0.6);
+          const marker = L.circleMarker([s.lat, s.lon], {
+            radius: radius,
+            color: cfg.borderColor,
+            weight: 2,
+            dashArray: cfg.dashArray,
+            fillColor: cfg.fillColor,
+            fillOpacity: 0.8,
+          });
+
+          marker.on('click', () => selectStop(s, { moveMap: true }));
+          marker.addTo(busLayer);
+        });
+
+        renderStatus(statusEl, cachedData, filteredStops, isFiltered);
+
+        if (keepSelectedStop && selectedStopId) {
+          const updatedSelected = filteredStops.find(
+            (s) => s.stop_id === selectedStopId,
+          );
+          if (updatedSelected) {
+            selectStop(updatedSelected, { moveMap: false });
+          } else {
+            closeStopDetail();
+          }
+        } else if (!keepSelectedStop && selectedStopId) {
+          closeStopDetail();
+        }
+      }
+
+      async function loadData() {
+        const minDelay = document.getElementById('minDelay').value;
+        const useRealtime = document.getElementById('useRealtime').checked;
+        const statusEl = document.getElementById('status');
+        statusEl.replaceChildren('データ取得中...');
+
+        map.closePopup();
+
+        const params = new URLSearchParams({
+          min_delay_min: minDelay,
+          use_realtime: String(useRealtime),
+        });
+
+        try {
+          const res = await fetch(`/api/map-data?${params.toString()}`, {
+            signal: AbortSignal.timeout(25000),
+          });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          cachedData = data;
+
+          bikeLayer.clearLayers();
+          data.bikeshare_ports.forEach((p) => {
+            let color = '#9aa0a6';
+            if (p.bikes > 0) {
+              color = p.provider === 'hellocycling' ? '#1a73e8' : '#e37400';
+            }
+            const bikeMarker = L.circleMarker([p.lat, p.lon], {
+              radius: 5,
+              color: '#ffffff',
+              weight: 1,
+              fillColor: color,
+              fillOpacity: 0.85,
+            }).bindPopup(createBikePopup(p));
+
+            bikeMarker.addTo(bikeLayer);
+          });
+
+          updateRouteFilterOptions(data.delayed_stops);
+          applyFiltersAndRender({ keepSelectedStop: true });
+        } catch (err) {
+          const isTimeout =
+            err instanceof DOMException &&
+            (err.name === 'TimeoutError' || err.name === 'AbortError');
+          const msg = isTimeout
+            ? '取得がタイムアウトしました'
+            : `取得エラーが発生しました: ${err.message}`;
+          statusEl.replaceChildren(msg);
+        }
+      }
+
+      const infoBtn = document.getElementById('infoBtn');
+      const mobileInfoBtn = document.getElementById('mobileInfoBtn');
+      const specPopover = document.getElementById('specPopover');
+      let lastSpecTrigger = null;
+      let restoreFocusToSpecTrigger = false;
+
+      [infoBtn, mobileInfoBtn].forEach((btn) => {
+        btn.addEventListener('click', () => {
+          lastSpecTrigger = btn;
+        });
+      });
+
+      specPopover.addEventListener('beforetoggle', (event) => {
+        if (event.newState === 'closed') {
+          restoreFocusToSpecTrigger = specPopover.contains(
+            document.activeElement,
+          );
+        }
+      });
+
+      specPopover.addEventListener('toggle', (event) => {
+        const isOpen = event.newState === 'open';
+        infoBtn.setAttribute('aria-expanded', String(isOpen));
+        mobileInfoBtn.setAttribute('aria-expanded', String(isOpen));
+        if (!isOpen && restoreFocusToSpecTrigger) {
+          restoreFocusToSpecTrigger = false;
+          const target =
+            window.innerWidth <= 768
+              ? mobileInfoBtn
+              : lastSpecTrigger || infoBtn;
+          target.focus();
+        }
+      });
+
+      mobileSettingsToggleBtn.addEventListener('click', () => {
+        const nextOpen = !settingsPanel.classList.contains('is-mobile-open');
+        setMobileSettingsOpen(nextOpen);
+      });
+      mobileClosePanelBtn.addEventListener('click', () => {
+        setMobileSettingsOpen(false);
+        mobileSettingsToggleBtn.focus({ preventScroll: true });
+      });
+
+      closeDetailBtn.addEventListener('click', closeStopDetail);
+      stopDetailPanel.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeStopDetail();
+        }
+      });
+
+      document.getElementById('reloadBtn').addEventListener('click', loadData);
+      document.getElementById('minDelay').addEventListener('change', loadData);
+      document
+        .getElementById('useRealtime')
+        .addEventListener('change', loadData);
+      document
+        .getElementById('routeFilter')
+        .addEventListener('change', () =>
+          applyFiltersAndRender({ keepSelectedStop: false }),
+        );
+      document.querySelectorAll('.status-filter-checkbox').forEach((cb) => {
+        cb.addEventListener('change', () =>
+          applyFiltersAndRender({ keepSelectedStop: false }),
+        );
+      });
+
+      loadData();
+    </script>
+    <script type="module">
+      if (!Object.hasOwn(HTMLElement.prototype, 'popover')) {
+        import(
+          'https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js'
+        );
+      }
+      if (!('commandForElement' in HTMLButtonElement.prototype)) {
+        import('https://esm.run/invokers-polyfill');
+      }
+    </script>
+  </body>
+</html>
