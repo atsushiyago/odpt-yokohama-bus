@@ -1446,24 +1446,24 @@
 
       .toast-region {
         position: fixed;
-        top: calc(var(--tab-bar-height) + 12px);
-        left: 50%;
-        transform: translateX(-50%);
+        inset: 0;
         z-index: 1300;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        width: min(380px, calc(100vw - 24px));
         pointer-events: none;
       }
       .app-toast[popover="manual"] {
-        position: relative;
+        position: fixed;
         inset: auto;
+        top: calc(var(--tab-bar-height) + 12px);
+        left: 50%;
+        right: auto;
+        bottom: auto;
+        transform: translateX(-50%);
         margin: 0;
+        z-index: 1300;
         pointer-events: auto;
         box-sizing: border-box;
-        width: 100%;
+        width: max-content;
+        max-width: min(440px, calc(100vw - 32px));
         padding: 10px 12px;
         border-radius: 8px;
         border: 1px solid #94a3b8;
@@ -1472,12 +1472,23 @@
         box-shadow: 0 6px 20px rgba(15, 23, 42, 0.3);
         font-size: 13px;
         line-height: 1.45;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      .app-toast[popover="manual"]:not(:popover-open):not(.\:popover-open) {
+        display: none;
       }
       .app-toast:is(:popover-open, .\:popover-open) {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
+      }
+      #locationToastText {
+        min-width: 0;
+        flex: 1 1 auto;
+        white-space: normal;
+        overflow-wrap: anywhere;
       }
       .app-toast.is-warning {
         background: #7c2d12;
@@ -1488,17 +1499,17 @@
         border-color: #fca5a5;
       }
       .toast-close-btn {
-        min-inline-size: 28px;
-        min-block-size: 28px;
+        min-inline-size: 32px;
+        min-block-size: 32px;
         border: 1px solid rgba(255, 255, 255, 0.35);
-        border-radius: 5px;
-        background: rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.14);
         color: #ffffff;
-        font-size: 14px;
+        font-size: 15px;
         line-height: 1;
         cursor: pointer;
         flex-shrink: 0;
-        padding: 0 6px;
+        padding: 0 8px;
       }
       .toast-close-btn:hover {
         background: rgba(255, 255, 255, 0.25);
@@ -1541,11 +1552,18 @@
         .tab-panel-realtime.has-detail-sheet .locate-btn {
           bottom: calc(var(--detail-sheet-height, 48dvh) + 12px);
         }
-        .toast-region {
-          top: calc(
-            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
-              46px
+        .app-toast[popover="manual"] {
+          top: max(
+            96px,
+            calc(var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) + 50px)
           );
+          left: 12px;
+          right: 12px;
+          bottom: auto;
+          transform: none;
+          width: auto;
+          max-width: calc(100vw - 24px);
+          margin: 0;
         }
       }
     </style>
