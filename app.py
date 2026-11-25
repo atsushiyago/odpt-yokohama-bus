@@ -386,7 +386,7 @@ def get_map_data(
         stop_ports_cache[sid] = near_list
         return near_list
 
-    # 各遅延バス停から半径300m以内のポート・在庫状況、最寄りポート、下流バス停との所要時間比較を算出
+    # 各遅延バス停から半径300m以内のポート・空き状況、最寄りポート、下流バス停との所要時間比較を算出
     delayed_stops = []
     avoidable_count = 0
     out_of_stock_count = 0
@@ -433,7 +433,7 @@ def get_map_data(
             avoidable_count += 1
         elif nearby_ports >= 1:
             category = "out_of_stock"
-            category_label = "在庫切れ・再配置不足"
+            category_label = "空き0台（貸出不可）・再配置不足"
             out_of_stock_count += 1
         else:
             category = "no_port"

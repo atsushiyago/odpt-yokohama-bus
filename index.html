@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <title>横浜市営バス遅延 × シェアサイクル在庫マップ</title>
+    <title>横浜市営バス遅延 × 代替シェアサイクル空き状況マップ</title>
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -167,14 +167,17 @@
 
       .panel-header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         gap: 8px;
         margin: 0 0 8px 0;
       }
       .panel h1 {
         margin: 0;
-        font-size: 15px;
+        flex: 1;
+        min-inline-size: 0;
+        font-size: 14px;
+        line-height: 1.35;
         color: #111827;
         text-wrap: balance;
       }
@@ -834,6 +837,77 @@
         background: #fef2f2;
         border-color: #fecaca;
         color: #991b1b;
+      }
+      .analysis-segment-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px 14px;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+      }
+      .analysis-segment-left {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px 10px;
+      }
+      .analysis-segment-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .segment-btn-group {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 3px;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+      }
+      .segment-btn {
+        min-block-size: 32px;
+        min-inline-size: 56px;
+        padding: 5px 14px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #334155;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background-color 0.15s ease,
+          color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .segment-btn:hover {
+        background: rgba(255, 255, 255, 0.7);
+        color: #0f172a;
+      }
+      .segment-btn[aria-pressed="true"] {
+        background: #1d4ed8;
+        color: #ffffff;
+        box-shadow: 0 1px 3px rgba(29, 78, 216, 0.25);
+      }
+      .analysis-sections-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      @media (pointer: coarse) {
+        .segment-btn,
+        .issue-filter-btn,
+        .analysis-refresh-btn {
+          min-block-size: 44px;
+          min-inline-size: 44px;
+        }
       }
       .analysis-card {
         background: #ffffff;
@@ -1609,7 +1683,7 @@
         <div
           id="map"
           role="application"
-          aria-label="横浜市営バス遅延とシェアサイクル在庫地図"
+          aria-label="横浜市営バス遅延と代替シェアサイクル空き状況マップ"
         ></div>
       </main>
 
@@ -1667,7 +1741,7 @@
         </li>
         <li>
           <strong>回避可否の判定：</strong
-          >各遅延バス停から半径300m以内のシェアサイクルポート有無と貸出可能台数をもとに「回避可能」「在庫切れ」「ポート空白」の3つに分類しています。
+          >各遅延バス停から半径300m以内のシェアサイクルポート有無と貸出可能台数をもとに「回避可能」「空き0台（貸出不可）」「ポート空白」の3つに分類しています。
         </li>
         <li>
           <strong>所要時間の比較計算：</strong
@@ -1688,7 +1762,7 @@
     <!-- 設定・凡例パネル（PCは右上常時表示、スマホはトグル開閉） -->
     <aside id="settingsPanel" class="panel" aria-label="表示設定と凡例">
       <div class="panel-header">
-        <h1>バス遅延 × シェアサイクル</h1>
+        <h1>横浜市営バス遅延 × 代替シェアサイクル空き状況マップ</h1>
         <button
           id="infoBtn"
           class="info-btn"
@@ -1765,7 +1839,7 @@
               <span class="dot dot-lg dot-out-of-stock"></span>
             </span>
             <span class="legend-label"
-              >在庫切れ・再配置不足（ポートあり・在庫0台）</span
+              >空き0台（貸出不可・再配置不足）</span
             >
           </label>
           <label class="legend-item legend-filter-label" for="filterNoPort">
@@ -1791,19 +1865,19 @@
             <span class="dot-slot" aria-hidden="true">
               <span class="dot dot-sm dot-hello"></span>
             </span>
-            <span class="legend-label">HELLO CYCLING（在庫あり）</span>
+            <span class="legend-label">HELLO CYCLING（空きあり）</span>
           </div>
           <div class="legend-item">
             <span class="dot-slot" aria-hidden="true">
               <span class="dot dot-sm dot-docomo"></span>
             </span>
-            <span class="legend-label">ドコモ・バイクシェア（在庫あり）</span>
+            <span class="legend-label">ドコモ・バイクシェア（空きあり）</span>
           </div>
           <div class="legend-item">
             <span class="dot-slot" aria-hidden="true">
               <span class="dot dot-sm dot-empty"></span>
             </span>
-            <span class="legend-label">ポート（貸出可能0台）</span>
+            <span class="legend-label">ポート（空き0台・貸出不可）</span>
           </div>
         </div>
       </div>
@@ -1904,20 +1978,69 @@
         </div>
 
         <div id="analysisContent" hidden>
-          <!-- (1) 全体サマリー -->
-          <section class="analysis-card" aria-labelledby="analysis-summary-title">
-            <div class="analysis-section-header">
-              <h2 id="analysis-summary-title" class="analysis-section-title">
-                全体サマリー
-              </h2>
-              <button
-                id="analysisReloadBtn"
-                class="analysis-refresh-btn"
-                type="button"
+          <div class="analysis-segment-bar">
+            <div class="analysis-segment-left">
+              <span id="analysisSegmentLabel" class="analysis-segment-label">
+                集計区分：
+              </span>
+              <div
+                class="segment-btn-group"
+                role="group"
+                aria-labelledby="analysisSegmentLabel"
               >
-                再読み込み
-              </button>
+                <button
+                  type="button"
+                  class="segment-btn"
+                  data-segment="all"
+                  aria-pressed="true"
+                >
+                  すべて
+                </button>
+                <button
+                  type="button"
+                  class="segment-btn"
+                  data-segment="weekday"
+                  aria-pressed="false"
+                >
+                  平日
+                </button>
+                <button
+                  type="button"
+                  class="segment-btn"
+                  data-segment="holiday"
+                  aria-pressed="false"
+                >
+                  土日祝
+                </button>
+              </div>
             </div>
+            <button
+              id="analysisReloadBtn"
+              class="analysis-refresh-btn"
+              type="button"
+            >
+              再読み込み
+            </button>
+          </div>
+
+          <div
+            id="analysisEmptySegmentMsg"
+            class="analysis-status-msg"
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            この曜日のデータはまだ蓄積されていません
+          </div>
+
+          <div id="analysisSectionsWrap" class="analysis-sections-wrap">
+            <!-- (1) 全体サマリー -->
+            <section class="analysis-card" aria-labelledby="analysis-summary-title">
+              <div class="analysis-section-header">
+                <h2 id="analysis-summary-title" class="analysis-section-title">
+                  全体サマリー
+                </h2>
+              </div>
             <div class="kpi-grid">
               <div class="kpi-item">
                 <div class="kpi-label">集計期間</div>
@@ -1976,7 +2099,7 @@
                   data-issue-filter="empty"
                   aria-pressed="false"
                 >
-                  在庫切れのみ
+                  空き0台のみ
                 </button>
               </div>
             </div>
@@ -2034,7 +2157,7 @@
                     <th scope="col">遅延件数</th>
                     <th scope="col">平均遅延</th>
                     <th scope="col">代替可能率</th>
-                    <th scope="col">在庫切れ率</th>
+                    <th scope="col">空き0台率</th>
                     <th scope="col">ポート空白率</th>
                   </tr>
                 </thead>
@@ -2042,6 +2165,7 @@
               </table>
             </div>
           </section>
+          </div>
         </div>
       </div>
     </section>
@@ -2079,7 +2203,7 @@
           drawOrder: 1,
         },
         out_of_stock: {
-          label: '在庫切れ・再配置不足',
+          label: '空き0台（貸出不可）・再配置不足',
           fillColor: '#8e24aa',
           borderColor: '#4a148c',
           dashArray: '4, 2',
@@ -2426,7 +2550,7 @@
           const portBox = document.createElement('div');
           portBox.className = 'nearest-port-box';
           portBox.append(
-            createLine('最寄り在庫ありポート案内', 'nearest-port-title'),
+            createLine('最寄りの貸出可能ポート案内', 'nearest-port-title'),
             createLine(`${np.name}（${np.provider_label}）`),
             createLine(`貸出可能: ${np.bikes}台`),
             createLine(
@@ -2469,7 +2593,7 @@
         } else if (s.category === 'out_of_stock') {
           nodes.push(
             createLine(
-              '半径300m内のポートはすべて貸出中（在庫0台）のため、現在自転車への切り替えはできません。',
+              '半径300m内のポートはすべて貸出中（空き0台・貸出不可）のため、現在自転車への切り替えはできません。',
               'detail-note-box',
             ),
           );
@@ -2639,7 +2763,7 @@
             'count-avoidable',
           ),
           createLine(
-            `在庫切れ・再配置不足: ${data.out_of_stock_stop_count}件`,
+            `空き0台（貸出不可）・再配置不足: ${data.out_of_stock_stop_count}件`,
             'count-out-of-stock',
           ),
           createLine(
@@ -3060,6 +3184,12 @@
 
       const analysisStatusMsg = document.getElementById('analysisStatusMsg');
       const analysisContent = document.getElementById('analysisContent');
+      const analysisEmptySegmentMsg = document.getElementById(
+        'analysisEmptySegmentMsg',
+      );
+      const analysisSectionsWrap = document.getElementById(
+        'analysisSectionsWrap',
+      );
       const analysisReloadBtn = document.getElementById('analysisReloadBtn');
       const kpiDateRange = document.getElementById('kpiDateRange');
       const kpiUpdatedAt = document.getElementById('kpiUpdatedAt');
@@ -3071,13 +3201,36 @@
       const chartFallbackMsg = document.getElementById('chartFallbackMsg');
 
       let analysisData = null;
+      let activeSegmentData = null;
       let analysisLoading = false;
+      let currentSegment = 'all';
       let currentIssueFilter = 'all';
       let analysisMap = null;
       let analysisStopLayer = null;
       let analysisMarkersById = new Map();
       let analysisListButtonsById = new Map();
       let hourlyChartInstance = null;
+
+      function resolveSegmentData(rawData, segmentKey) {
+        if (!rawData) return null;
+        if (rawData.segments && rawData.segments[segmentKey]) {
+          return rawData.segments[segmentKey];
+        }
+        if (segmentKey === 'all') {
+          return {
+            meta: rawData.meta || {},
+            problem_stops: rawData.problem_stops || [],
+            hourly_trends: rawData.hourly_trends || [],
+            route_summary: rawData.route_summary || [],
+          };
+        }
+        return {
+          meta: { total_valid_delays: 0 },
+          problem_stops: [],
+          hourly_trends: [],
+          route_summary: [],
+        };
+      }
 
       function ensureAnalysisMap() {
         if (analysisMap) return;
@@ -3104,7 +3257,7 @@
           : 'issue-badge issue-badge-empty';
         badge.textContent = isNoPort
           ? 'ポート空白・新規設置候補'
-          : '在庫切れ・再配置候補';
+          : '空き0台・再配置候補';
 
         const title = document.createElement('div');
         const strong = document.createElement('strong');
@@ -3124,7 +3277,7 @@
             `遅延件数: ${ps.delay_count}件（平均 ${ps.avg_delay_min}分）`,
           ),
           createLine(
-            `内訳: 代替可 ${ps.available_count} / 在庫切 ${ps.empty_count} / 空白 ${ps.no_port_count}`,
+            `内訳: 代替可 ${ps.available_count} / 空き0台 ${ps.empty_count} / 空白 ${ps.no_port_count}`,
           ),
           createLine(`最寄りポート距離: ${distText}`),
         );
@@ -3132,10 +3285,10 @@
       }
 
       function renderProblemStopsSection() {
-        if (!analysisData) return;
+        if (!activeSegmentData) return;
         ensureAnalysisMap();
 
-        const allStops = analysisData.problem_stops || [];
+        const allStops = activeSegmentData.problem_stops || [];
         const filtered = allStops.filter((ps) => {
           if (currentIssueFilter === 'all') return true;
           return ps.issue_type === currentIssueFilter;
@@ -3191,7 +3344,7 @@
             : 'issue-badge issue-badge-empty';
           badgeEl.textContent = isNoPort
             ? 'ポート空白・設置候補'
-            : '在庫切れ・再配置候補';
+            : '空き0台・再配置候補';
 
           topRow.append(nameEl, badgeEl);
 
@@ -3253,7 +3406,7 @@
           {
             cls: 'seg-empty',
             rate: emptyRate,
-            label: '在庫切れ',
+            label: '空き0台（貸出不可）',
             swatch: '#ea580c',
           },
           {
@@ -3327,7 +3480,7 @@
                 backgroundColor: '#16a34a',
               },
               {
-                label: '在庫切れ',
+                label: '空き0台（貸出不可）',
                 data: emptyData,
                 backgroundColor: '#ea580c',
               },
@@ -3412,19 +3565,37 @@
         routeSummaryBody.replaceChildren(...rows);
       }
 
-      function renderAnalysisDashboard(data) {
+      function renderAnalysisDashboard(data = analysisData) {
+        if (!data) return;
         analysisData = data;
         analysisStatusMsg.hidden = true;
         analysisContent.hidden = false;
 
-        renderOverallSummary(data.meta || {});
+        const segmentData = resolveSegmentData(data, currentSegment);
+        activeSegmentData = segmentData;
+        const meta = (segmentData && segmentData.meta) || {};
+        const totalDelays = Number(meta.total_valid_delays || 0);
+
+        if (totalDelays === 0) {
+          analysisEmptySegmentMsg.hidden = false;
+          analysisSectionsWrap.hidden = true;
+          return;
+        }
+
+        analysisEmptySegmentMsg.hidden = true;
+        analysisSectionsWrap.hidden = false;
+
+        renderOverallSummary(meta);
         renderProblemStopsSection();
-        renderHourlyChart(data.hourly_trends || []);
-        renderRouteTable(data.route_summary || []);
+        renderHourlyChart(segmentData.hourly_trends || []);
+        renderRouteTable(segmentData.route_summary || []);
 
         requestAnimationFrame(() => {
           if (analysisMap) {
             analysisMap.invalidateSize();
+          }
+          if (hourlyChartInstance) {
+            hourlyChartInstance.resize();
           }
         });
       }
@@ -3434,6 +3605,7 @@
         if (analysisData && !forceReload) {
           requestAnimationFrame(() => {
             if (analysisMap) analysisMap.invalidateSize();
+            if (hourlyChartInstance) hourlyChartInstance.resize();
           });
           return;
         }
@@ -3517,6 +3689,18 @@
             tabButtons[nextIdx].focus();
           }
         });
+
+      document.querySelectorAll('.segment-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const nextSeg = btn.dataset.segment || 'all';
+          if (nextSeg === currentSegment) return;
+          currentSegment = nextSeg;
+          document.querySelectorAll('.segment-btn').forEach((b) => {
+            b.setAttribute('aria-pressed', String(b === btn));
+          });
+          renderAnalysisDashboard();
+        });
+      });
 
       document.querySelectorAll('.issue-filter-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
