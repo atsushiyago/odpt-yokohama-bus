@@ -59,6 +59,9 @@ TRIP_TO_ROUTE = {}
 TRIP_HEADSIGN = {}
 STOP_TIMES = {}
 GBFS_INFO_CACHE = {}
+BIKESHARE_CACHE = {"stations": None, "fetched_at": 0.0}
+BIKESHARE_CACHE_TTL_SEC = 30.0
+BIKESHARE_CACHE_LOCK = threading.Lock()
 
 
 def parse_gtfs_time_seconds(time_str: str) -> int | None:
@@ -252,7 +255,14 @@ def extract_rental_url(station: dict) -> str | None:
     return None
 
 
-def fetch_bikeshare_stations():
+def fetch_bikeshare_stations(force_refresh: bool = False):
+    now = time.monotonic()
+    if not force_refresh:
+        with BIKESHARE_CACHE_LOCK:
+            cached = BIKESHARE_CACHE["stations"]
+            if cached is not None and (now - BIKESHARE_CACHE["fetched_at"]) < BIKESHARE_CACHE_TTL_SEC:
+                return cached
+
     all_stations = []
     for key, cfg in GBFS_PROVIDERS.items():
         try:
@@ -306,7 +316,48 @@ def fetch_bikeshare_stations():
                     )
         except Exception as e:
             print(f"GBFS取得エラー ({key}): {e}")
+    if all_stations:
+        with BIKESHARE_CACHE_LOCK:
+            BIKESHARE_CACHE["stations"] = all_stations
+            BIKESHARE_CACHE["fetched_at"] = time.monotonic()
     return all_stations
+
+
+def find_ports_near_coords(s_lat: float, s_lon: float, bikes: list[dict]) -> list[tuple[float, dict]]:
+    """指定座標から半径300m以内のシェアサイクルポートを距離昇順で返す。"""
+    near_list = []
+    for b in bikes:
+        if abs(b["lat"] - s_lat) > 0.004 or abs(b["lon"] - s_lon) > 0.004:
+            continue
+        dist_m = haversine_m(s_lat, s_lon, b["lat"], b["lon"])
+        if dist_m <= 300:
+            near_list.append((dist_m, b))
+    near_list.sort(key=lambda x: x[0])
+    return near_list
+
+
+def collect_top_available_ports(near_ports: list[tuple[float, dict]], limit: int = 3) -> list[dict]:
+    """半径300m以内の空き1台以上ポートを距離順・台数順で上位limit件返す。"""
+    available_candidates = []
+    for dist_m, b in near_ports:
+        if b["bikes"] >= 1:
+            port_entry = {
+                "station_id": b["station_id"],
+                "name": b["name"] or "名称未設定",
+                "provider": b["provider"],
+                "provider_label": b["provider_label"],
+                "bikes": b["bikes"],
+                "docks": b["docks"],
+                "lat": b["lat"],
+                "lon": b["lon"],
+                "rental_url": b.get("rental_url"),
+                "distance_m": int(round(dist_m)),
+                "raw_distance_m": dist_m,
+                "walk_min": estimate_walk_minutes(dist_m),
+            }
+            available_candidates.append((dist_m, -b["bikes"], port_entry))
+    available_candidates.sort(key=lambda x: (x[0], x[1]))
+    return [c[2] for c in available_candidates[:limit]]
 
 
 @app.get("/")
@@ -468,7 +519,7 @@ def get_map_data(
                     "downstream_candidates": downstream_in_range,
                 }
 
-    bikes = fetch_bikeshare_stations()
+    bikes = fetch_bikeshare_stations(force_refresh=True)
 
     # 任意のバス停から半径300m以内のポート一覧をキャッシュ付きで取得するヘルパー
     stop_ports_cache = {}
@@ -477,15 +528,7 @@ def get_map_data(
         if sid in stop_ports_cache:
             return stop_ports_cache[sid]
         st_info = STOPS[sid]
-        s_lat, s_lon = st_info["lat"], st_info["lon"]
-        near_list = []
-        for b in bikes:
-            if abs(b["lat"] - s_lat) > 0.004 or abs(b["lon"] - s_lon) > 0.004:
-                continue
-            dist_m = haversine_m(s_lat, s_lon, b["lat"], b["lon"])
-            if dist_m <= 300:
-                near_list.append((dist_m, b))
-        near_list.sort(key=lambda x: x[0])
+        near_list = find_ports_near_coords(st_info["lat"], st_info["lon"], bikes)
         stop_ports_cache[sid] = near_list
         return near_list
 
@@ -573,28 +616,7 @@ def get_map_data(
         near_ports = get_ports_near_stop(sid)
         nearby_ports = len(near_ports)
         nearby_bikes = sum(b["bikes"] for _, b in near_ports)
-
-        available_candidates = []
-        for dist_m, b in near_ports:
-            if b["bikes"] >= 1:
-                port_entry = {
-                    "station_id": b["station_id"],
-                    "name": b["name"] or "名称未設定",
-                    "provider": b["provider"],
-                    "provider_label": b["provider_label"],
-                    "bikes": b["bikes"],
-                    "docks": b["docks"],
-                    "lat": b["lat"],
-                    "lon": b["lon"],
-                    "rental_url": b.get("rental_url"),
-                    "distance_m": int(round(dist_m)),
-                    "raw_distance_m": dist_m,
-                    "walk_min": estimate_walk_minutes(dist_m),
-                }
-                available_candidates.append((dist_m, -b["bikes"], port_entry))
-
-        available_candidates.sort(key=lambda x: (x[0], x[1]))
-        top_raw_ports = [c[2] for c in available_candidates[:3]]
+        top_raw_ports = collect_top_available_ports(near_ports, limit=3)
 
         if nearby_bikes >= 1:
             category = "avoidable"
@@ -690,6 +712,52 @@ def get_map_data(
         "bikeshare_port_count": len(bikes),
         "delayed_stops": delayed_stops,
         "bikeshare_ports": bikes,
+    }
+
+
+@app.get("/api/stop-detail")
+def get_stop_detail(stop_id: str = Query(..., min_length=1)):
+    """遅延リストにないマイバス停向けに、全バス停マスタと半径300m内ポート案内を返す。"""
+    if not STOPS:
+        load_static_gtfs()
+
+    sid = stop_id.strip()
+    if sid not in STOPS:
+        raise HTTPException(status_code=404, detail="Stop not found")
+
+    st_info = STOPS[sid]
+    bikes = fetch_bikeshare_stations(force_refresh=False)
+    near_ports = find_ports_near_coords(st_info["lat"], st_info["lon"], bikes)
+    nearby_ports = len(near_ports)
+    nearby_bikes = sum(b["bikes"] for _, b in near_ports)
+    top_raw_ports = collect_top_available_ports(near_ports, limit=3)
+
+    available_ports_300m = [
+        {**{k: v for k, v in p.items() if k != "raw_distance_m"}, "downstream_comparisons": []}
+        for p in top_raw_ports
+    ]
+    nearest_port = available_ports_300m[0] if available_ports_300m else None
+
+    return {
+        "stop_id": sid,
+        "name": st_info["name"],
+        "lat": st_info["lat"],
+        "lon": st_info["lon"],
+        "has_delay": False,
+        "category": "normal",
+        "category_label": "平常運行",
+        "max_delay_min": 0,
+        "routes": [],
+        "headsigns": [],
+        "delayed_trips": 0,
+        "next_arrival": None,
+        "arrivals": [],
+        "nearby_ports_300m": nearby_ports,
+        "nearby_bikes_300m": nearby_bikes,
+        "nearest_port": nearest_port,
+        "available_ports_300m": available_ports_300m,
+        "comparison_trip": None,
+        "downstream_comparisons": [],
     }
 
 

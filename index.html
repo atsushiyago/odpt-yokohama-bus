@@ -580,11 +580,23 @@
         min-width: 0;
         overflow-wrap: break-word;
       }
+      .next-arrival-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
       .next-arrival-label {
         font-size: 11px;
         font-weight: 700;
         color: #1e40af;
         letter-spacing: 0.02em;
+      }
+      .next-arrival-auto-note {
+        font-size: 10.5px;
+        font-weight: 500;
+        color: #64748b;
       }
       .next-arrival-main {
         font-size: 13px;
@@ -646,6 +658,102 @@
         background: #fce8e6;
         color: #a50e0e;
         border: 1px solid #d93025;
+      }
+      .popup-badge-normal {
+        background: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+      }
+      .detail-stop-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 6px 0 8px 0;
+      }
+      .detail-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-block-size: 32px;
+        padding: 4px 9px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #1e293b;
+        font-family: inherit;
+        font-size: 11.5px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .detail-action-btn:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+      }
+      .detail-action-btn.is-registered {
+        background: #fef3c7;
+        border-color: #f59e0b;
+        color: #92400e;
+      }
+      .my-stops-bar {
+        position: fixed;
+        top: calc(var(--tab-bar-height) + 10px);
+        left: 56px;
+        right: 374px;
+        z-index: 1001;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 2px 0;
+        scrollbar-width: thin;
+        pointer-events: none;
+      }
+      .my-stops-bar[hidden] {
+        display: none;
+      }
+      .my-stop-chip {
+        pointer-events: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        flex-shrink: 0;
+        min-block-size: 32px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 23, 42, 0.18);
+        background: rgba(255, 255, 255, 0.96);
+        color: #0f172a;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.16);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .my-stop-chip:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+      }
+      .my-stop-chip.is-active {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #ffffff;
+      }
+      .my-stop-delay-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ef4444;
+        flex-shrink: 0;
+      }
+      .my-stop-chip.is-active .my-stop-delay-dot {
+        background: #fde047;
+      }
+      @media (min-width: 769px) {
+        .tab-panel-realtime.has-my-stops .detail-panel {
+          top: 96px;
+          max-height: calc(100dvh - var(--tab-bar-height) - 112px);
+        }
       }
       .nearest-port-box {
         margin-top: 6px;
@@ -1951,6 +2059,25 @@
         .tab-panel-realtime.has-detail-sheet .locate-btn {
           bottom: calc(var(--detail-sheet-height, 48dvh) + 12px);
         }
+        .my-stops-bar {
+          top: calc(
+            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
+              42px
+          );
+          left: 54px;
+          right: 10px;
+        }
+        .my-stop-chip {
+          min-block-size: 38px;
+          padding: 6px 12px;
+          font-size: 12.5px;
+        }
+        .tab-panel-realtime.has-my-stops ~ .toast-region .app-toast[popover="manual"] {
+          top: max(
+            138px,
+            calc(var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) + 90px)
+          );
+        }
         .map-loading-overlay {
           gap: 12px;
           padding: 12px 15px;
@@ -2037,6 +2164,14 @@
           </div>
         </div>
       </div>
+
+      <!-- 登録済みマイバス停ワンタップバー -->
+      <nav
+        id="myStopsBar"
+        class="my-stops-bar"
+        aria-label="マイバス停"
+        hidden
+      ></nav>
 
     <!-- スマホ幅専用の上部コンパクトバー -->
     <div class="mobile-top-bar" role="toolbar" aria-label="表示メニュー">
@@ -2682,12 +2817,70 @@
           badgeClass: 'popup-badge popup-badge-no-port',
           drawOrder: 3,
         },
+        normal: {
+          label: '平常運行',
+          fillColor: '#2563eb',
+          borderColor: '#1e40af',
+          dashArray: null,
+          badgeClass: 'popup-badge popup-badge-normal',
+          drawOrder: 0,
+        },
       };
 
-      const routeCollator = new Intl.Collator('ja', { numeric: true });
+      const MY_STOPS_STORAGE_KEY = 'yokohama_my_stops';
+      const MY_STOPS_MAX = 5;
+      const AUTO_REFRESH_INTERVAL_MS = 60000;
+      const initialUrlStopId =
+        new URLSearchParams(window.location.search).get('stop_id')?.trim() ||
+        '';
+
       let cachedData = null;
       let selectedStopId = null;
+      let selectedStopObj = null;
       let selectedPortIndex = 0;
+      let myStops = loadMyStops();
+      let initialAutoSelectDone = false;
+      let previouslyDelayedMyStopIds = new Set();
+
+      function loadMyStops() {
+        try {
+          const raw = localStorage.getItem(MY_STOPS_STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return [];
+          return parsed
+            .filter(
+              (item) =>
+                item &&
+                typeof item.stop_id === 'string' &&
+                item.stop_id.trim() &&
+                Number.isFinite(Number(item.lat)) &&
+                Number.isFinite(Number(item.lon)),
+            )
+            .slice(0, MY_STOPS_MAX)
+            .map((item) => ({
+              stop_id: item.stop_id.trim(),
+              stop_name: String(item.stop_name || item.stop_id).trim(),
+              lat: Number(item.lat),
+              lon: Number(item.lon),
+            }));
+        } catch {
+          return [];
+        }
+      }
+
+      function saveMyStops(list = myStops) {
+        myStops = (Array.isArray(list) ? list : myStops).slice(0, MY_STOPS_MAX);
+        try {
+          localStorage.setItem(MY_STOPS_STORAGE_KEY, JSON.stringify(myStops));
+        } catch {
+          // localStorage利用不可時はメモリ状態のみ維持
+        }
+      }
+
+      function isMyStop(stopId) {
+        return myStops.some((item) => item.stop_id === stopId);
+      }
 
       function getSelectablePorts(stop) {
         if (!stop) return [];
@@ -2748,7 +2941,7 @@
         const stopRadius = Math.min(18, 6 + stop.max_delay_min * 0.6);
         const np = activePort || getSelectedPort(stop);
 
-        if (stop.category === 'avoidable' && np) {
+        if ((stop.category === 'avoidable' || stop.category === 'normal') && np) {
           const coords = [
             [stop.lat, stop.lon],
             [np.lat, np.lon],
@@ -3044,7 +3237,13 @@
       function createNextArrivalSection(s) {
         const box = document.createElement('div');
         box.className = 'next-arrival-box';
-        box.append(createLine('次のバス到着予測', 'next-arrival-label'));
+        const header = document.createElement('div');
+        header.className = 'next-arrival-header';
+        header.append(
+          createLine('次のバス到着予測', 'next-arrival-label'),
+          createLine('60秒ごと自動更新', 'next-arrival-auto-note'),
+        );
+        box.append(header);
 
         const rawList = Array.isArray(s.arrivals)
           ? s.arrivals
@@ -3174,21 +3373,63 @@
           nodes.push(createLine(directionText, 'detail-direction-line'));
         }
 
-        nodes.push(
-          createLine(
-            `最大遅延: ${s.max_delay_min}分（該当${s.delayed_trips}便）`,
-            'detail-meta-line',
-          ),
-          createNextArrivalSection(s),
-          createLine(`該当系統: ${s.routes.join(', ')}`, 'detail-meta-line'),
-          createLine(
-            `半径300m内: 利用可能 ${s.nearby_bikes_300m}台 (${s.nearby_ports_300m}ポート)`,
-            'detail-meta-line',
-          ),
-        );
+        const myStopActions = document.createElement('div');
+        myStopActions.className = 'detail-stop-actions';
+
+        const registered = isMyStop(s.stop_id);
+        const toggleMyStopBtn = document.createElement('button');
+        toggleMyStopBtn.id = 'toggleMyStopBtn';
+        toggleMyStopBtn.type = 'button';
+        toggleMyStopBtn.className = `detail-action-btn${registered ? ' is-registered' : ''}`;
+        toggleMyStopBtn.setAttribute('aria-pressed', String(registered));
+        toggleMyStopBtn.textContent = registered
+          ? '★ マイバス停登録済み（解除）'
+          : '☆ マイバス停に登録';
+        toggleMyStopBtn.addEventListener('click', () => {
+          toggleMyStop(s);
+        });
+
+        const copyUrlBtn = document.createElement('button');
+        copyUrlBtn.id = 'copyStopUrlBtn';
+        copyUrlBtn.type = 'button';
+        copyUrlBtn.className = 'detail-action-btn';
+        copyUrlBtn.textContent = 'このバス停のURLをコピー';
+        copyUrlBtn.addEventListener('click', () => {
+          copyStopUrl(s.stop_id);
+        });
+
+        myStopActions.append(toggleMyStopBtn, copyUrlBtn);
+        nodes.push(myStopActions);
+
+        const isNormalStop = s.has_delay === false || s.category === 'normal';
+        if (isNormalStop) {
+          nodes.push(
+            createLine(
+              '現在、指定条件以上の遅延便はありません',
+              'detail-note-box',
+            ),
+            createLine(
+              `半径300m内: 利用可能 ${s.nearby_bikes_300m}台 (${s.nearby_ports_300m}ポート)`,
+              'detail-meta-line',
+            ),
+          );
+        } else {
+          nodes.push(
+            createLine(
+              `最大遅延: ${s.max_delay_min}分（該当${s.delayed_trips}便）`,
+              'detail-meta-line',
+            ),
+            createNextArrivalSection(s),
+            createLine(`該当系統: ${s.routes.join(', ')}`, 'detail-meta-line'),
+            createLine(
+              `半径300m内: 利用可能 ${s.nearby_bikes_300m}台 (${s.nearby_ports_300m}ポート)`,
+              'detail-meta-line',
+            ),
+          );
+        }
 
         const ports = getSelectablePorts(s);
-        if (s.category === 'avoidable' && ports.length > 0) {
+        if ((s.category === 'avoidable' || isNormalStop) && ports.length > 0) {
           if (selectedPortIndex < 0 || selectedPortIndex >= ports.length) {
             selectedPortIndex = 0;
           }
@@ -3286,12 +3527,21 @@
           });
 
           portBox.append(cardList);
+          nodes.push(portBox);
 
-          const cmpSlot = document.createElement('div');
-          cmpSlot.id = 'comparisonSectionSlot';
-          cmpSlot.append(createComparisonSection(s, activePort));
-
-          nodes.push(portBox, cmpSlot);
+          if (!isNormalStop) {
+            const cmpSlot = document.createElement('div');
+            cmpSlot.id = 'comparisonSectionSlot';
+            cmpSlot.append(createComparisonSection(s, activePort));
+            nodes.push(cmpSlot);
+          }
+        } else if (isNormalStop && Number(s.nearby_ports_300m || 0) > 0) {
+          nodes.push(
+            createLine(
+              '半径300m内のポートはすべて貸出中（空き0台・貸出不可）です。',
+              'detail-note-box',
+            ),
+          );
         } else if (s.category === 'out_of_stock') {
           nodes.push(
             createLine(
@@ -3349,10 +3599,10 @@
         };
       }
 
-      function fitStopAndPortBounds(stop, activePort = null) {
+      function fitStopAndPortBounds(stop, activePort = null, minZoom = 0) {
         const points = [[stop.lat, stop.lon]];
         const np = activePort || getSelectedPort(stop);
-        if (stop.category === 'avoidable' && np) {
+        if ((stop.category === 'avoidable' || stop.category === 'normal') && np) {
           points.push([np.lat, np.lon]);
         }
         const bounds = L.latLngBounds(points);
@@ -3368,9 +3618,15 @@
           animate: !reducedMotion,
           duration: 0.45,
         });
+        if (minZoom > 0 && map.getZoom() < minZoom) {
+          map.setZoom(minZoom, { animate: !reducedMotion });
+        }
       }
 
-      function selectStop(stop, { moveMap = true, resetPort = true } = {}) {
+      function selectStop(
+        stop,
+        { moveMap = true, resetPort = true, minZoom = 0 } = {},
+      ) {
         map.closePopup();
         // スマホ幅で「設定・凡例」が開いていれば自動で閉じる
         setMobileSettingsOpen(false);
@@ -3379,6 +3635,7 @@
           selectedPortIndex = 0;
         }
         selectedStopId = stop.stop_id;
+        selectedStopObj = stop;
         renderStopDetail(stop);
         stopDetailPanel.hidden = false;
 
@@ -3391,21 +3648,254 @@
           realtimePanel.style.setProperty('--detail-sheet-height', `${sheetH}px`);
         }
 
+        renderMyStopsBar();
+
         const activePort = getSelectedPort(stop);
         showStopSelectionHighlight(stop, activePort);
         if (moveMap) {
-          fitStopAndPortBounds(stop, activePort);
+          fitStopAndPortBounds(stop, activePort, minZoom);
         }
       }
 
       function closeStopDetail() {
         selectedStopId = null;
+        selectedStopObj = null;
         selectedPortIndex = 0;
         clearRouteHighlight();
         stopDetailPanel.hidden = true;
         const realtimePanel = document.getElementById('panel-realtime');
         realtimePanel.classList.remove('has-detail-sheet');
         realtimePanel.style.removeProperty('--detail-sheet-height');
+        renderMyStopsBar();
+      }
+
+      function renderMyStopsBar() {
+        const bar = document.getElementById('myStopsBar');
+        const realtimePanel = document.getElementById('panel-realtime');
+        if (!bar || !realtimePanel) return;
+
+        if (!myStops.length) {
+          bar.hidden = true;
+          bar.innerHTML = '';
+          realtimePanel.classList.remove('has-my-stops');
+          return;
+        }
+
+        const delayedIds = new Set(
+          (cachedData?.delayed_stops || []).map((s) => s.stop_id),
+        );
+
+        bar.hidden = false;
+        realtimePanel.classList.add('has-my-stops');
+        bar.innerHTML = '';
+        myStops.forEach((ms) => {
+          const isDelayed = delayedIds.has(ms.stop_id);
+          const isActive = selectedStopId === ms.stop_id;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = [
+            'my-stop-chip',
+            isActive ? 'is-active' : '',
+            isDelayed ? 'is-delayed' : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
+          btn.setAttribute('data-stop-id', ms.stop_id);
+          btn.title = `${ms.stop_name}${isDelayed ? '（遅延発生中）' : ''}`;
+
+          if (isDelayed) {
+            const dot = document.createElement('span');
+            dot.className = 'my-stop-delay-dot';
+            dot.setAttribute('aria-label', '遅延発生中');
+            btn.appendChild(dot);
+          }
+
+          const label = document.createElement('span');
+          label.textContent = ms.stop_name;
+          btn.appendChild(label);
+
+          btn.addEventListener('click', () => {
+            selectStopById(ms.stop_id, { moveMap: true, minZoom: 15 });
+          });
+
+          bar.appendChild(btn);
+        });
+      }
+
+      function toggleMyStop(stop) {
+        if (!stop || !stop.stop_id) return;
+        const stopName = stop.name || stop.stop_name || stop.stop_id;
+        const idx = myStops.findIndex((s) => s.stop_id === stop.stop_id);
+        if (idx >= 0) {
+          myStops.splice(idx, 1);
+          previouslyDelayedMyStopIds.delete(stop.stop_id);
+          saveMyStops();
+          if (selectedStopObj && selectedStopObj.stop_id === stop.stop_id) {
+            renderStopDetail(selectedStopObj);
+          }
+          renderMyStopsBar();
+          showLocationToast(
+            `「${stopName}」をマイバス停から解除しました`,
+            'info',
+            2400,
+          );
+          return;
+        }
+
+        if (myStops.length >= MY_STOPS_MAX) {
+          showLocationToast(
+            'マイバス停は最大5件まで登録できます',
+            'warning',
+            3000,
+          );
+          return;
+        }
+
+        myStops.push({
+          stop_id: stop.stop_id,
+          stop_name: stopName,
+          lat: stop.lat,
+          lon: stop.lon,
+        });
+        if (
+          cachedData?.delayed_stops?.some((d) => d.stop_id === stop.stop_id)
+        ) {
+          previouslyDelayedMyStopIds.add(stop.stop_id);
+        }
+        saveMyStops();
+        if (selectedStopObj && selectedStopObj.stop_id === stop.stop_id) {
+          renderStopDetail(selectedStopObj);
+        }
+        renderMyStopsBar();
+        showLocationToast(
+          `「${stopName}」をマイバス停に登録しました`,
+          'info',
+          2400,
+        );
+      }
+
+      async function copyStopUrl(stopOrId) {
+        const stopId =
+          typeof stopOrId === 'string'
+            ? stopOrId.trim()
+            : String(stopOrId?.stop_id || '').trim();
+        if (!stopId || stopId === '[object Object]') return;
+        const url = new URL(window.location.href);
+        url.search = '';
+        url.searchParams.set('stop_id', stopId);
+        const targetUrl = url.toString();
+        const copyBtn = document.getElementById('copyStopUrlBtn');
+        if (copyBtn) copyBtn.setAttribute('data-copied-url', targetUrl);
+
+        let copied = false;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(targetUrl);
+            copied = true;
+          }
+        } catch (err) {
+          copied = false;
+        }
+
+        if (!copied) {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = targetUrl;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            copied = document.execCommand('copy');
+            document.body.removeChild(ta);
+          } catch (err) {
+            copied = false;
+          }
+        }
+
+        if (copied) {
+          showLocationToast(
+            'URLをコピーしました（ホーム画面に追加すると直接開けます）',
+            'info',
+            3400,
+          );
+        } else {
+          showLocationToast('URLのコピーに失敗しました', 'error', 3000);
+        }
+      }
+
+      function checkAndNotifyMyStopsDelay(data) {
+        if (!myStops.length || !data || !Array.isArray(data.delayed_stops)) {
+          previouslyDelayedMyStopIds.clear();
+          return;
+        }
+        const delayedMyStops = myStops
+          .map((ms) => data.delayed_stops.find((s) => s.stop_id === ms.stop_id))
+          .filter(Boolean);
+
+        if (!delayedMyStops.length) {
+          previouslyDelayedMyStopIds.clear();
+          return;
+        }
+
+        const newlyDelayedStops = delayedMyStops.filter(
+          (s) => !previouslyDelayedMyStopIds.has(s.stop_id),
+        );
+        previouslyDelayedMyStopIds = new Set(
+          delayedMyStops.map((s) => s.stop_id),
+        );
+
+        if (!newlyDelayedStops.length) {
+          return;
+        }
+
+        const names = newlyDelayedStops
+          .map((s) => s.name || s.stop_name || s.stop_id)
+          .join('・');
+        showLocationToast(
+          `マイバス停（${names}）で遅延が発生しています`,
+          'warning',
+          4500,
+        );
+      }
+
+      async function selectStopById(
+        stopId,
+        { moveMap = true, minZoom = 15, silentNotFound = false } = {},
+      ) {
+        if (!stopId) return false;
+        const delayedMatch = (cachedData?.delayed_stops || []).find(
+          (s) => s.stop_id === stopId,
+        );
+        if (delayedMatch) {
+          selectStop(delayedMatch, { moveMap, resetPort: true, minZoom });
+          return true;
+        }
+
+        try {
+          const resp = await fetch(
+            `/api/stop-detail?stop_id=${encodeURIComponent(stopId)}`,
+          );
+          if (!resp.ok) {
+            if (!silentNotFound) {
+              showLocationToast(
+                '指定されたバス停が見つかりませんでした',
+                'warning',
+                3000,
+              );
+            }
+            return false;
+          }
+          const stopDetail = await resp.json();
+          selectStop(stopDetail, { moveMap, resetPort: true, minZoom });
+          return true;
+        } catch (err) {
+          console.error('Failed to fetch stop detail:', err);
+          if (!silentNotFound) {
+            showLocationToast('バス停情報の取得に失敗しました', 'error', 3000);
+          }
+          return false;
+        }
       }
 
       function getSelectedCategories() {
@@ -3428,7 +3918,7 @@
           );
         }
         nodes.push(
-          createLine(`基準時刻: ${data.feed_time}`),
+          createLine(`基準時刻: ${data.feed_time}（60秒ごと自動更新）`),
           createLine(`遅延バス停 合計: ${data.delayed_stop_count}件`),
         );
 
@@ -3514,7 +4004,12 @@
           if (updatedSelected) {
             selectStop(updatedSelected, { moveMap: false, resetPort: false });
           } else {
-            closeStopDetail();
+            selectStopById(selectedStopId, {
+              moveMap: false,
+              silentNotFound: true,
+            }).then((ok) => {
+              if (!ok) closeStopDetail();
+            });
           }
         } else if (!keepSelectedStop && selectedStopId) {
           closeStopDetail();
@@ -3526,22 +4021,23 @@
       const mapLoadingSub = document.getElementById('mapLoadingSub');
       let mapLoadRequestSeq = 0;
 
-      async function loadData() {
+      async function loadData({ isAutoRefresh = false } = {}) {
         const reqSeq = ++mapLoadRequestSeq;
         const minDelay = document.getElementById('minDelay').value;
         const statusEl = document.getElementById('status');
-        statusEl.replaceChildren('データ取得中...');
-
-        if (cachedData) {
-          mapLoadingTitle.textContent = `遅延${minDelay}分以上の条件を反映中…`;
-          mapLoadingSub.textContent =
-            '遅延バス停と周辺ポートの空き状況を再計算しています';
-        } else {
-          mapLoadingTitle.textContent = '運行・空き状況を取得中…';
-          mapLoadingSub.textContent =
-            '遅延バス停とシェアサイクルポートを読み込んでいます';
+        if (!isAutoRefresh) {
+          statusEl.replaceChildren('データ取得中...');
+          if (cachedData) {
+            mapLoadingTitle.textContent = `遅延${minDelay}分以上の条件を反映中…`;
+            mapLoadingSub.textContent =
+              '遅延バス停と周辺ポートの空き状況を再計算しています';
+          } else {
+            mapLoadingTitle.textContent = '運行・空き状況を取得中…';
+            mapLoadingSub.textContent =
+              '遅延バス停とシェアサイクルポートを読み込んでいます';
+          }
+          mapLoadingOverlay.hidden = false;
         }
-        mapLoadingOverlay.hidden = false;
 
         map.closePopup();
 
@@ -3579,6 +4075,23 @@
           });
 
           applyFiltersAndRender({ keepSelectedStop: true });
+          renderMyStopsBar();
+          checkAndNotifyMyStopsDelay(data);
+
+          if (!initialAutoSelectDone) {
+            initialAutoSelectDone = true;
+            if (initialUrlStopId) {
+              await selectStopById(initialUrlStopId, {
+                moveMap: true,
+                minZoom: 16,
+              });
+            } else if (myStops.length > 0) {
+              await selectStopById(myStops[0].stop_id, {
+                moveMap: true,
+                minZoom: 16,
+              });
+            }
+          }
         } catch (err) {
           if (reqSeq !== mapLoadRequestSeq) return;
           const isTimeout =
@@ -3653,7 +4166,13 @@
         );
       });
 
+      renderMyStopsBar();
       loadData();
+      setInterval(() => {
+        if (!document.hidden && !panelRealtimeEl.hidden) {
+          loadData({ isAutoRefresh: true });
+        }
+      }, AUTO_REFRESH_INTERVAL_MS);
 
       // =========================================================
       // 現在地へ移動（横浜市内外判定・トースト通知）
