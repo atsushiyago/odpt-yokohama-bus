@@ -3108,7 +3108,7 @@
         if (comparisons.length === 0) {
           box.append(
             createLine(
-              '※500m〜5km先の下流バス停がありません（終点付近など）',
+              '※500m〜5km先の下流バス停がありません（終点付近など）。終点や他路線への移動手段として周辺ポートは利用可能です。',
               'comparison-empty',
             ),
           );
@@ -3280,9 +3280,11 @@
           const ul = document.createElement('ul');
           ul.className = 'next-arrival-sublist';
           ul.setAttribute('role', 'list');
-          followUps.forEach(({ formatted }) => {
+          const useNumber = followUps.length > 1;
+          followUps.forEach(({ formatted }, idx) => {
             const li = document.createElement('li');
-            li.textContent = `続行: ${formatted.compactText}`;
+            const prefix = useNumber ? `後続${idx + 1}` : '後続';
+            li.textContent = `${prefix}: ${formatted.compactText}`;
             ul.append(li);
           });
           box.append(ul);
