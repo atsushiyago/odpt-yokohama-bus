@@ -4020,9 +4020,12 @@
       const mapLoadingTitle = document.getElementById('mapLoadingTitle');
       const mapLoadingSub = document.getElementById('mapLoadingSub');
       let mapLoadRequestSeq = 0;
+      let lastMapDataFetchedAt = 0;
+      let isMapDataLoading = false;
 
       async function loadData({ isAutoRefresh = false } = {}) {
         const reqSeq = ++mapLoadRequestSeq;
+        isMapDataLoading = true;
         const minDelay = document.getElementById('minDelay').value;
         const statusEl = document.getElementById('status');
         if (!isAutoRefresh) {
@@ -4056,6 +4059,7 @@
           const data = await res.json();
           if (reqSeq !== mapLoadRequestSeq) return;
           cachedData = data;
+          lastMapDataFetchedAt = Date.now();
 
           bikeLayer.clearLayers();
           data.bikeshare_ports.forEach((p) => {
@@ -4103,6 +4107,7 @@
           statusEl.replaceChildren(msg);
         } finally {
           if (reqSeq === mapLoadRequestSeq) {
+            isMapDataLoading = false;
             mapLoadingOverlay.hidden = true;
           }
         }
@@ -4166,13 +4171,23 @@
         );
       });
 
-      renderMyStopsBar();
-      loadData();
-      setInterval(() => {
-        if (!document.hidden && !panelRealtimeEl.hidden) {
+      function maybeRefreshIfStale() {
+        if (document.hidden || panelRealtimeEl.hidden) return;
+        if (isMapDataLoading || !lastMapDataFetchedAt) return;
+        if (Date.now() - lastMapDataFetchedAt >= AUTO_REFRESH_INTERVAL_MS) {
           loadData({ isAutoRefresh: true });
         }
-      }, AUTO_REFRESH_INTERVAL_MS);
+      }
+
+      renderMyStopsBar();
+      loadData();
+      setInterval(maybeRefreshIfStale, 15000);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          maybeRefreshIfStale();
+        }
+      });
+      window.addEventListener('focus', maybeRefreshIfStale);
 
       // =========================================================
       // 現在地へ移動（横浜市内外判定・トースト通知）
@@ -4967,6 +4982,7 @@
           requestAnimationFrame(() => {
             map.invalidateSize();
           });
+          maybeRefreshIfStale();
         }
       }
 
