@@ -3,6 +3,7 @@ import io
 import logging
 import math
 import os
+import sys
 import threading
 import time
 import zipfile
@@ -34,6 +35,7 @@ WALK_SPEED_M_PER_MIN = 80.0
 BIKE_SPEED_M_PER_MIN = 250.0
 DOWNSTREAM_MIN_DIST_M = 500.0
 DOWNSTREAM_MAX_DIST_M = 5000.0
+MAX_DELAY_SEC = 5400  # 90分超の遅延は車載器未更新等の異常値として除外
 
 GBFS_PROVIDERS = {
     "hellocycling": {
@@ -55,7 +57,45 @@ STOPS = {}
 ROUTES = {}
 TRIP_TO_ROUTE = {}
 TRIP_HEADSIGN = {}
+STOP_TIMES = {}
 GBFS_INFO_CACHE = {}
+
+
+def parse_gtfs_time_seconds(time_str: str) -> int | None:
+    """GTFSの時刻文字列（24時超え表記を含む HH:MM:SS）を経過秒数へ変換する。"""
+    parts = (time_str or "").strip().split(":")
+    if len(parts) != 3:
+        return None
+    try:
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        seconds = int(parts[2])
+    except ValueError:
+        return None
+    if hours < 0 or not (0 <= minutes < 60) or not (0 <= seconds < 60):
+        return None
+    return hours * 3600 + minutes * 60 + seconds
+
+
+def resolve_gtfs_service_timestamp(
+    sched_secs: int, ref_ts: int, start_date_str: str = ""
+) -> int:
+    """運行日（start_date または基準時刻に最も近い営業日）から定刻のUnixタイムスタンプを算出する。"""
+    clean_date = (start_date_str or "").strip()
+    if len(clean_date) == 8 and clean_date.isdigit():
+        try:
+            service_dt = datetime.strptime(clean_date, "%Y%m%d").replace(tzinfo=JST)
+            return int(service_dt.timestamp()) + sched_secs
+        except ValueError:
+            pass
+
+    ref_dt = datetime.fromtimestamp(ref_ts, JST)
+    base_midnight = datetime(ref_dt.year, ref_dt.month, ref_dt.day, tzinfo=JST)
+    candidates = [
+        int((base_midnight + timedelta(days=offset)).timestamp()) + sched_secs
+        for offset in (-1, 0, 1)
+    ]
+    return min(candidates, key=lambda cand: abs(cand - ref_ts))
 
 
 def load_static_gtfs():
@@ -71,6 +111,7 @@ def load_static_gtfs():
                     lat, lon = float(lat_str), float(lon_str)
                 except ValueError:
                     continue
+                sid = sys.intern(sid)
                 STOPS[sid] = {
                     "stop_id": sid,
                     "name": row.get("stop_name") or sid,
@@ -92,8 +133,23 @@ def load_static_gtfs():
                 tid = row.get("trip_id")
                 rid = row.get("route_id")
                 if tid and rid:
+                    tid = sys.intern(tid)
                     TRIP_TO_ROUTE[tid] = rid
                     TRIP_HEADSIGN[tid] = (row.get("trip_headsign") or "").strip()
+        with zf.open("stop_times.txt") as f:
+            for row in csv.DictReader(io.TextIOWrapper(f, encoding="utf-8-sig")):
+                tid = row.get("trip_id")
+                sid = row.get("stop_id")
+                if not tid or not sid:
+                    continue
+                secs = parse_gtfs_time_seconds(
+                    row.get("arrival_time") or row.get("departure_time") or ""
+                )
+                if secs is None:
+                    continue
+                key = (sys.intern(tid), sys.intern(sid))
+                if key not in STOP_TIMES:
+                    STOP_TIMES[key] = secs
 
 
 @asynccontextmanager
@@ -263,7 +319,7 @@ def get_map_data(
     min_delay_min: int = Query(5, ge=1, le=60),
     use_realtime: bool = Query(True),
 ):
-    if not STOPS:
+    if not STOPS or not STOP_TIMES:
         load_static_gtfs()
 
     feed, source, fallback_reason, realtime_configured = load_gtfs_rt_feed(
@@ -271,15 +327,17 @@ def get_map_data(
     )
 
     feed_ts = feed.header.timestamp or int(time.time())
+    current_ts = int(time.time()) if source == "realtime_api" else feed_ts
     min_delay_sec = min_delay_min * 60
 
-    # 基準時刻から前後（-5分〜+30分）に到着予定の遅延便をバス停ごとに集計し、下流停留所候補も記録
+    # 基準時刻から前後（-5分〜+30分）に到着予定の遅延便をバス停ごとに集計し、下流停留所候補・到着予測も記録
     stop_delays = {}
     for entity in feed.entity:
         if not entity.HasField("trip_update"):
             continue
         tu = entity.trip_update
         tid = tu.trip.trip_id
+        start_date_str = tu.trip.start_date
         rid = TRIP_TO_ROUTE.get(tid) or ""
         rname = ROUTES.get(rid) or "不明系統"
         headsign = TRIP_HEADSIGN.get(tid) or ""
@@ -287,15 +345,32 @@ def get_map_data(
 
         for idx, stu in enumerate(stu_list):
             delay = max(stu.arrival.delay, stu.departure.delay)
-            if delay < min_delay_sec:
-                continue
-
-            arr_ts = stu.arrival.time or stu.departure.time
-            if arr_ts and not (feed_ts - 300 <= arr_ts <= feed_ts + 1800):
+            if not (min_delay_sec <= delay <= MAX_DELAY_SEC):
                 continue
 
             sid = stu.stop_id
             if sid not in STOPS:
+                continue
+
+            arr_ts = stu.arrival.time or stu.departure.time
+            sched_secs = STOP_TIMES.get((tid, sid))
+            if sched_secs is not None:
+                scheduled_ts = resolve_gtfs_service_timestamp(
+                    sched_secs, arr_ts or feed_ts, start_date_str
+                )
+            elif arr_ts:
+                scheduled_ts = arr_ts - delay
+            else:
+                scheduled_ts = None
+
+            predicted_ts = (
+                arr_ts
+                if arr_ts
+                else (scheduled_ts + delay if scheduled_ts is not None else None)
+            )
+            if predicted_ts is not None and not (
+                feed_ts - 300 <= predicted_ts <= feed_ts + 1800
+            ):
                 continue
 
             orig_stop = STOPS[sid]
@@ -308,6 +383,7 @@ def get_map_data(
                     "departing_headsigns": set(),
                     "all_headsigns": set(),
                     "delayed_trips": 0,
+                    "arrivals": [],
                     "best_trip": None,
                 },
             )
@@ -320,6 +396,33 @@ def get_map_data(
                 if idx < len(stu_list) - 1:
                     entry["departing_headsigns"].add(clean_hs)
             entry["delayed_trips"] += 1
+
+            if predicted_ts is not None:
+                remaining_sec = predicted_ts - current_ts
+                if remaining_sec >= -60:
+                    remaining_min = (
+                        0 if remaining_sec <= 0 else math.ceil(remaining_sec / 60)
+                    )
+                    predicted_time_str = datetime.fromtimestamp(
+                        predicted_ts, JST
+                    ).strftime("%H:%M")
+                    scheduled_time_str = (
+                        datetime.fromtimestamp(scheduled_ts, JST).strftime("%H:%M")
+                        if scheduled_ts is not None
+                        else ""
+                    )
+                    entry["arrivals"].append(
+                        {
+                            "trip_id": tid,
+                            "route_name": rname,
+                            "headsign": headsign,
+                            "delay_min": round(delay / 60, 1),
+                            "remaining_min": remaining_min,
+                            "predicted_time_str": predicted_time_str,
+                            "scheduled_time_str": scheduled_time_str,
+                            "_predicted_ts": predicted_ts,
+                        }
+                    )
 
             # この便における当該バス停より後の下流バス停（直線500m〜5000m）を抽出
             downstream_in_range = []
@@ -353,7 +456,7 @@ def get_map_data(
 
             # 下流候補を持つ便を優先し、その中でも遅延が大きい便を比較代表便として保持
             has_downstream = 1 if downstream_in_range else 0
-            cand_rank = (has_downstream, delay, -(arr_ts or feed_ts))
+            cand_rank = (has_downstream, delay, -(predicted_ts or feed_ts))
             prev_best = entry["best_trip"]
             if prev_best is None or cand_rank > prev_best["rank"]:
                 entry["best_trip"] = {
@@ -538,6 +641,15 @@ def get_map_data(
         )
 
         headsigns = sorted(item["departing_headsigns"] or item["all_headsigns"])
+        sorted_arrivals = sorted(
+            item["arrivals"],
+            key=lambda a: (a["_predicted_ts"], a["route_name"]),
+        )
+        arrivals = [
+            {k: v for k, v in a.items() if k != "_predicted_ts"}
+            for a in sorted_arrivals
+        ]
+        next_arrival = arrivals[0] if arrivals else None
 
         delayed_stops.append(
             {
@@ -549,6 +661,8 @@ def get_map_data(
                 "routes": sorted(item["routes"]),
                 "headsigns": headsigns,
                 "delayed_trips": item["delayed_trips"],
+                "next_arrival": next_arrival,
+                "arrivals": arrivals,
                 "nearby_ports_300m": nearby_ports,
                 "nearby_bikes_300m": nearby_bikes,
                 "category": category,

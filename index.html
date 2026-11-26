@@ -322,34 +322,48 @@
 
       .controls {
         display: flex;
-        gap: 6px;
+        gap: 8px;
         align-items: center;
-        margin-bottom: 6px;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .controls-delay-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
       }
       .controls label {
         flex-shrink: 0;
+        font-weight: 600;
       }
-      .controls select,
-      .controls button {
-        min-block-size: 28px;
+      .controls select {
+        min-block-size: 30px;
         font-size: 13px;
         padding: 2px 8px;
       }
-      .route-select {
-        flex: 1;
-        min-width: 0;
-      }
-      .controls button {
+      .controls-reload-btn {
+        min-block-size: 30px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #1e293b;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
         cursor: pointer;
+        flex-shrink: 0;
       }
-      .source-toggle {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 8px;
-        min-block-size: 24px;
+      .controls-reload-btn:hover {
+        background: #e2e8f0;
       }
-      .source-toggle input[type="checkbox"],
+      @media (pointer: coarse) {
+        .controls select,
+        .controls-reload-btn {
+          min-block-size: 40px;
+        }
+      }
       .status-filter-checkbox {
         accent-color: #1769e0;
         inline-size: 15px;
@@ -357,10 +371,6 @@
         margin: 0;
         cursor: pointer;
         flex-shrink: 0;
-      }
-      .source-toggle label {
-        cursor: pointer;
-        user-select: none;
       }
       :where(
         select,
@@ -557,6 +567,52 @@
       .detail-meta-line {
         font-size: 12.5px;
         color: #1f2937;
+      }
+      .next-arrival-box {
+        margin: 7px 0;
+        padding: 8px 10px;
+        border-radius: 7px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+        overflow-wrap: break-word;
+      }
+      .next-arrival-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #1e40af;
+        letter-spacing: 0.02em;
+      }
+      .next-arrival-main {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.4;
+      }
+      .next-arrival-main.is-imminent {
+        color: #b45309;
+      }
+      .next-arrival-scheduled {
+        font-size: 11.5px;
+        color: #475569;
+      }
+      .next-arrival-empty {
+        font-size: 12px;
+        color: #64748b;
+      }
+      .next-arrival-sublist {
+        list-style: none;
+        margin: 3px 0 0 0;
+        padding: 5px 0 0 0;
+        border-top: 1px dashed #bfdbfe;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 11.5px;
+        color: #334155;
       }
       .detail-note-box {
         margin-top: 8px;
@@ -2035,6 +2091,10 @@
           >全バス停ではなく、基準時刻の前後（-5分〜+30分）に到着予定で、設定した遅延分数以上の便があるバス停のみを抽出して表示しています。
         </li>
         <li>
+          <strong>最大遅延・異常値除外：</strong
+          >当該バス停（標柱単位）に到着予定の該当便のうち、最大の遅延時間を「最大遅延」として表示しています（1便のみ該当する場合もその便の遅延時間）。なお、車載器の便情報未更新等による極端な外れ値を防ぐため、90分を超える遅延データは除外しています。
+        </li>
+        <li>
           <strong>回避可否の判定：</strong
           >各遅延バス停から半径300m以内のシェアサイクルポート有無と貸出可能台数をもとに「回避可能」「空き0台（貸出不可）」「ポート空白」の3つに分類しています。
         </li>
@@ -2081,25 +2141,22 @@
       </div>
 
       <div class="controls">
-        <label for="minDelay">遅延:</label>
-        <select id="minDelay">
-          <option value="3">3分以上</option>
-          <option value="5" selected>5分以上</option>
-          <option value="10">10分以上</option>
-        </select>
-        <button id="reloadBtn" type="button">更新</button>
-      </div>
-
-      <div class="controls">
-        <label for="routeFilter">系統:</label>
-        <select id="routeFilter" class="route-select">
-          <option value="">全系統</option>
-        </select>
-      </div>
-
-      <div class="source-toggle">
-        <input type="checkbox" id="useRealtime" checked />
-        <label for="useRealtime">リアルタイムAPIを使用</label>
+        <div class="controls-delay-group">
+          <label for="minDelay">遅延:</label>
+          <select id="minDelay">
+            <option value="3">3分以上</option>
+            <option value="5" selected>5分以上</option>
+            <option value="10">10分以上</option>
+          </select>
+        </div>
+        <button
+          id="reloadBtn"
+          class="controls-reload-btn"
+          type="button"
+          aria-label="最新データに更新"
+        >
+          ↻ 更新
+        </button>
       </div>
 
       <div id="status" class="status-box" aria-live="polite">読み込み中...</div>
@@ -2941,6 +2998,108 @@
         return box;
       }
 
+      function formatArrivalRouteText(arrival) {
+        const route =
+          arrival && typeof arrival.route_name === 'string'
+            ? arrival.route_name.trim()
+            : '';
+        const hsRaw =
+          arrival && typeof arrival.headsign === 'string'
+            ? arrival.headsign.trim()
+            : '';
+        const headsign = hsRaw
+          ? hsRaw.endsWith('行')
+            ? hsRaw
+            : `${hsRaw}行`
+          : '';
+        return [route, headsign].filter(Boolean).join('・');
+      }
+
+      function formatArrivalSummaryText(arrival) {
+        if (!arrival || typeof arrival !== 'object') return null;
+        const rem = Number(arrival.remaining_min);
+        const timeStr =
+          typeof arrival.predicted_time_str === 'string'
+            ? arrival.predicted_time_str.trim()
+            : '';
+        if (!Number.isFinite(rem) || rem < 0 || !timeStr) {
+          return null;
+        }
+        const routePart = formatArrivalRouteText(arrival);
+        const etaCore =
+          rem === 0
+            ? `まもなく到着（${timeStr}頃予定`
+            : `あと約${Math.round(rem)}分（${timeStr}頃予定`;
+        return {
+          isImminent: rem === 0,
+          text: routePart ? `${etaCore} / ${routePart}）` : `${etaCore}）`,
+          compactText:
+            (rem === 0
+              ? `まもなく到着（${timeStr}頃`
+              : `あと約${Math.round(rem)}分（${timeStr}頃`) +
+            (routePart ? ` / ${routePart}）` : '）'),
+        };
+      }
+
+      function createNextArrivalSection(s) {
+        const box = document.createElement('div');
+        box.className = 'next-arrival-box';
+        box.append(createLine('次のバス到着予測', 'next-arrival-label'));
+
+        const rawList = Array.isArray(s.arrivals)
+          ? s.arrivals
+          : s.next_arrival
+            ? [s.next_arrival]
+            : [];
+        const validArrivals = rawList
+          .map((item) => ({ item, formatted: formatArrivalSummaryText(item) }))
+          .filter((entry) => entry.formatted !== null);
+
+        if (validArrivals.length === 0) {
+          box.append(createLine('到着予測データなし', 'next-arrival-empty'));
+          return box;
+        }
+
+        const primary = validArrivals[0];
+        const mainClass = primary.formatted.isImminent
+          ? 'next-arrival-main is-imminent'
+          : 'next-arrival-main';
+        box.append(createLine(primary.formatted.text, mainClass));
+
+        const schedStr =
+          typeof primary.item.scheduled_time_str === 'string'
+            ? primary.item.scheduled_time_str.trim()
+            : '';
+        const delayMin = Number(primary.item.delay_min);
+        if (schedStr) {
+          const delaySuffix =
+            Number.isFinite(delayMin) && delayMin > 0
+              ? `（+${delayMin}分遅れ）`
+              : '';
+          box.append(
+            createLine(
+              `定刻 ${schedStr}頃${delaySuffix}`,
+              'next-arrival-scheduled',
+            ),
+          );
+        }
+
+        const followUps = validArrivals.slice(1, 4);
+        if (followUps.length > 0) {
+          const ul = document.createElement('ul');
+          ul.className = 'next-arrival-sublist';
+          ul.setAttribute('role', 'list');
+          followUps.forEach(({ formatted }) => {
+            const li = document.createElement('li');
+            li.textContent = `続行: ${formatted.compactText}`;
+            ul.append(li);
+          });
+          box.append(ul);
+        }
+
+        return box;
+      }
+
       function formatHeadsignsLabel(headsigns) {
         if (!Array.isArray(headsigns) || headsigns.length === 0) {
           return '';
@@ -3020,6 +3179,7 @@
             `最大遅延: ${s.max_delay_min}分（該当${s.delayed_trips}便）`,
             'detail-meta-line',
           ),
+          createNextArrivalSection(s),
           createLine(`該当系統: ${s.routes.join(', ')}`, 'detail-meta-line'),
           createLine(
             `半径300m内: 利用可能 ${s.nearby_bikes_300m}台 (${s.nearby_ports_300m}ポート)`,
@@ -3260,37 +3420,6 @@
         return selected;
       }
 
-      function updateRouteFilterOptions(delayedStops) {
-        const routeSelect = document.getElementById('routeFilter');
-        const prevValue = routeSelect.value;
-
-        const routeCounts = new Map();
-        delayedStops.forEach((s) => {
-          s.routes.forEach((r) => {
-            routeCounts.set(r, (routeCounts.get(r) || 0) + 1);
-          });
-        });
-
-        const sortedRoutes = [...routeCounts.keys()].sort(
-          routeCollator.compare,
-        );
-
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = '';
-        defaultOpt.textContent = `全系統 (${sortedRoutes.length}系統)`;
-
-        const options = [defaultOpt];
-        sortedRoutes.forEach((routeName) => {
-          const opt = document.createElement('option');
-          opt.value = routeName;
-          opt.textContent = `${routeName} (${routeCounts.get(routeName)}停留所)`;
-          options.push(opt);
-        });
-
-        routeSelect.replaceChildren(...options);
-        routeSelect.value = routeCounts.has(prevValue) ? prevValue : '';
-      }
-
       function renderStatus(statusEl, data, filteredStops, isFiltered) {
         const nodes = [createLine(`データ種別: ${formatSourceLabel(data)}`)];
         if (data.fallback_reason) {
@@ -3341,18 +3470,14 @@
 
         const statusEl = document.getElementById('status');
         const selectedCategories = getSelectedCategories();
-        const selectedRoute = document.getElementById('routeFilter').value;
-        const isFiltered =
-          selectedCategories.size < 3 || Boolean(selectedRoute);
+        const isFiltered = selectedCategories.size < 3;
 
         map.closePopup();
         busLayer.clearLayers();
 
-        const filteredStops = cachedData.delayed_stops.filter((s) => {
-          if (!selectedCategories.has(s.category)) return false;
-          if (selectedRoute && !s.routes.includes(selectedRoute)) return false;
-          return true;
-        });
+        const filteredStops = cachedData.delayed_stops.filter((s) =>
+          selectedCategories.has(s.category),
+        );
 
         const orderedStops = filteredStops.toSorted((a, b) => {
           const orderA = (
@@ -3404,7 +3529,6 @@
       async function loadData() {
         const reqSeq = ++mapLoadRequestSeq;
         const minDelay = document.getElementById('minDelay').value;
-        const useRealtime = document.getElementById('useRealtime').checked;
         const statusEl = document.getElementById('status');
         statusEl.replaceChildren('データ取得中...');
 
@@ -3423,7 +3547,7 @@
 
         const params = new URLSearchParams({
           min_delay_min: minDelay,
-          use_realtime: String(useRealtime),
+          use_realtime: 'true',
         });
 
         try {
@@ -3454,7 +3578,6 @@
             bikeMarker.addTo(bikeLayer);
           });
 
-          updateRouteFilterOptions(data.delayed_stops);
           applyFiltersAndRender({ keepSelectedStop: true });
         } catch (err) {
           if (reqSeq !== mapLoadRequestSeq) return;
@@ -3524,14 +3647,6 @@
 
       document.getElementById('reloadBtn').addEventListener('click', loadData);
       document.getElementById('minDelay').addEventListener('change', loadData);
-      document
-        .getElementById('useRealtime')
-        .addEventListener('change', loadData);
-      document
-        .getElementById('routeFilter')
-        .addEventListener('change', () =>
-          applyFiltersAndRender({ keepSelectedStop: false }),
-        );
       document.querySelectorAll('.status-filter-checkbox').forEach((cb) => {
         cb.addEventListener('change', () =>
           applyFiltersAndRender({ keepSelectedStop: false }),
