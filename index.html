@@ -1644,8 +1644,8 @@
         text-box: trim-both cap alphabetic;
       }
 
-      progress.locate-spinner {
-        display: none;
+      progress.locate-spinner,
+      progress.map-loading-spinner {
         --_from: calc(90deg + var(--arc-start, 0deg));
         --_to: calc(90deg + var(--arc-end, 158deg));
         --size: 18px;
@@ -1669,27 +1669,42 @@
           locate-spin var(--_used-spinner-duration) linear infinite
           var(--progress-dash-animation, );
       }
-      progress.locate-spinner:indeterminate::-webkit-progress-bar {
+      progress.locate-spinner {
+        display: none;
+      }
+      progress.map-loading-spinner {
+        display: inline-block;
+        --size: 30px;
+        --thickness: 3.5px;
+        --spinner-color: #38bdf8;
+        --track-color: rgba(56, 189, 248, 0.22);
+      }
+      progress.locate-spinner:indeterminate::-webkit-progress-bar,
+      progress.map-loading-spinner:indeterminate::-webkit-progress-bar {
         display: none;
         background: none;
       }
-      progress.locate-spinner:indeterminate::-webkit-progress-value {
+      progress.locate-spinner:indeterminate::-webkit-progress-value,
+      progress.map-loading-spinner:indeterminate::-webkit-progress-value {
         display: none;
         background: none;
       }
-      progress.locate-spinner:indeterminate::-moz-progress-bar {
+      progress.locate-spinner:indeterminate::-moz-progress-bar,
+      progress.map-loading-spinner:indeterminate::-moz-progress-bar {
         display: none;
         background: none;
       }
       @supports (background-clip: border-area) {
-        progress.locate-spinner {
+        progress.locate-spinner,
+        progress.map-loading-spinner {
           background-clip: border-area;
           border: var(--thickness) solid transparent;
           background-origin: border-box;
         }
       }
       @supports not (background-clip: border-area) {
-        progress.locate-spinner {
+        progress.locate-spinner,
+        progress.map-loading-spinner {
           --clip-boundary: calc(100% - var(--thickness));
           mask-image: radial-gradient(
             farthest-side,
@@ -1704,6 +1719,49 @@
       }
       .locate-btn[aria-busy="true"] progress.locate-spinner {
         display: inline-block;
+      }
+
+      /* 地図中央の読み込み中案内カード */
+      .map-loading-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1005;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: max-content;
+        max-width: min(440px, calc(100vw - 32px));
+        padding: 14px 20px;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: rgba(15, 23, 42, 0.88);
+        backdrop-filter: blur(8px);
+        color: #f8fafc;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.36);
+        pointer-events: none;
+        box-sizing: border-box;
+      }
+      .map-loading-overlay[hidden] {
+        display: none;
+      }
+      .map-loading-text {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .map-loading-title {
+        font-size: 14.5px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #ffffff;
+      }
+      .map-loading-sub {
+        font-size: 12px;
+        line-height: 1.4;
+        color: #cbd5e1;
       }
 
       @keyframes locate-spin {
@@ -1806,7 +1864,8 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        progress.locate-spinner {
+        progress.locate-spinner,
+        progress.map-loading-spinner {
           --_used-spinner-duration: 6s;
           --progress-dash-animation: ;
           --arc-end: 158deg;
@@ -1817,10 +1876,12 @@
       }
       @media (forced-colors: active) {
         .locate-btn,
+        .map-loading-overlay,
         .app-toast[popover="manual"] {
           border: 2px solid CanvasText;
         }
-        progress.locate-spinner {
+        progress.locate-spinner,
+        progress.map-loading-spinner {
           forced-color-adjust: none;
           --spinner-color: CanvasText;
           --track-color: Canvas;
@@ -1833,6 +1894,16 @@
         }
         .tab-panel-realtime.has-detail-sheet .locate-btn {
           bottom: calc(var(--detail-sheet-height, 48dvh) + 12px);
+        }
+        .map-loading-overlay {
+          gap: 12px;
+          padding: 12px 15px;
+        }
+        .map-loading-title {
+          font-size: 13.5px;
+        }
+        .map-loading-sub {
+          font-size: 11.5px;
         }
         .app-toast[popover="manual"] {
           top: max(
@@ -1894,6 +1965,22 @@
           aria-label="横浜市営バス遅延と代替シェアサイクル空き状況マップ"
         ></div>
       </main>
+
+      <!-- 地図中央の読み込み中案内オーバーレイ -->
+      <div id="mapLoadingOverlay" class="map-loading-overlay">
+        <progress
+          class="map-loading-spinner"
+          aria-label="運行・空き状況を読み込み中"
+        ></progress>
+        <div class="map-loading-text">
+          <div id="mapLoadingTitle" class="map-loading-title">
+            運行・空き状況を取得中…
+          </div>
+          <div id="mapLoadingSub" class="map-loading-sub">
+            遅延バス停とシェアサイクルポートを読み込んでいます
+          </div>
+        </div>
+      </div>
 
     <!-- スマホ幅専用の上部コンパクトバー -->
     <div class="mobile-top-bar" role="toolbar" aria-label="表示メニュー">
@@ -3309,11 +3396,28 @@
         }
       }
 
+      const mapLoadingOverlay = document.getElementById('mapLoadingOverlay');
+      const mapLoadingTitle = document.getElementById('mapLoadingTitle');
+      const mapLoadingSub = document.getElementById('mapLoadingSub');
+      let mapLoadRequestSeq = 0;
+
       async function loadData() {
+        const reqSeq = ++mapLoadRequestSeq;
         const minDelay = document.getElementById('minDelay').value;
         const useRealtime = document.getElementById('useRealtime').checked;
         const statusEl = document.getElementById('status');
         statusEl.replaceChildren('データ取得中...');
+
+        if (cachedData) {
+          mapLoadingTitle.textContent = `遅延${minDelay}分以上の条件を反映中…`;
+          mapLoadingSub.textContent =
+            '遅延バス停と周辺ポートの空き状況を再計算しています';
+        } else {
+          mapLoadingTitle.textContent = '運行・空き状況を取得中…';
+          mapLoadingSub.textContent =
+            '遅延バス停とシェアサイクルポートを読み込んでいます';
+        }
+        mapLoadingOverlay.hidden = false;
 
         map.closePopup();
 
@@ -3330,6 +3434,7 @@
             throw new Error(`HTTP ${res.status}`);
           }
           const data = await res.json();
+          if (reqSeq !== mapLoadRequestSeq) return;
           cachedData = data;
 
           bikeLayer.clearLayers();
@@ -3352,6 +3457,7 @@
           updateRouteFilterOptions(data.delayed_stops);
           applyFiltersAndRender({ keepSelectedStop: true });
         } catch (err) {
+          if (reqSeq !== mapLoadRequestSeq) return;
           const isTimeout =
             err instanceof DOMException &&
             (err.name === 'TimeoutError' || err.name === 'AbortError');
@@ -3359,6 +3465,10 @@
             ? '取得がタイムアウトしました'
             : `取得エラーが発生しました: ${err.message}`;
           statusEl.replaceChildren(msg);
+        } finally {
+          if (reqSeq === mapLoadRequestSeq) {
+            mapLoadingOverlay.hidden = true;
+          }
         }
       }
 
