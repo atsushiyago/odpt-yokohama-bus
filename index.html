@@ -3904,6 +3904,14 @@
         return selected;
       }
 
+      function formatSlashDateDisplay(raw) {
+        if (!raw) return '—';
+        return String(raw)
+          .replace(/(\d{4})-(\d{2})-(\d{2})/g, '$1/$2/$3')
+          .replace(/\s*JST$/i, '')
+          .trim();
+      }
+
       function renderStatus(statusEl, data, filteredStops, isFiltered) {
         const nodes = [createLine(`データ種別: ${formatSourceLabel(data)}`)];
         if (data.fallback_reason) {
@@ -3911,8 +3919,9 @@
             createLine(`※理由: ${data.fallback_reason}`, 'fallback-note'),
           );
         }
+        const feedTimeText = formatSlashDateDisplay(data.feed_time);
         nodes.push(
-          createLine(`基準時刻: ${data.feed_time}（60秒ごと自動更新）`),
+          createLine(`基準時刻: ${feedTimeText}（60秒ごと自動更新）`),
           createLine(`遅延バス停 合計: ${data.delayed_stop_count}件`),
         );
 
@@ -4603,8 +4612,8 @@
       }
 
       function renderOverallSummary(meta) {
-        kpiDateRange.textContent = meta.date_range || '—';
-        kpiUpdatedAt.textContent = meta.updated_at_jst || '—';
+        kpiDateRange.textContent = formatSlashDateDisplay(meta.date_range);
+        kpiUpdatedAt.textContent = formatSlashDateDisplay(meta.updated_at_jst);
         kpiTotalDelays.textContent =
           typeof meta.total_valid_delays === 'number'
             ? `${meta.total_valid_delays.toLocaleString()}件`
