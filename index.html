@@ -1320,7 +1320,6 @@
       }
       @media (pointer: coarse) {
         .segment-btn,
-        .issue-filter-btn,
         .analysis-refresh-btn {
           min-block-size: 44px;
           min-inline-size: 44px;
@@ -1493,12 +1492,6 @@
         background: #f8fafc;
         overflow: hidden;
       }
-      .filter-btn-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
-      }
       .problem-controls-bar {
         display: flex;
         flex-wrap: wrap;
@@ -1542,25 +1535,6 @@
       .problem-dest-risk.is-muted {
         font-weight: 400;
         color: #64748b;
-      }
-      .issue-filter-btn {
-        min-block-size: 28px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        border: 1px solid #cbd5e1;
-        background: #ffffff;
-        color: #334155;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .issue-filter-btn:hover {
-        background: #f1f5f9;
-      }
-      .issue-filter-btn[aria-pressed="true"] {
-        background: #1d4ed8;
-        border-color: #1d4ed8;
-        color: #ffffff;
       }
       .problem-list {
         list-style: none;
@@ -2869,36 +2843,6 @@
                 自転車で代替しづらい遅延バス停マップ＆ランキング
               </h2>
               <div class="problem-controls-bar">
-                <div
-                  class="filter-btn-group"
-                  role="group"
-                  aria-label="課題種別フィルタ"
-                >
-                  <button
-                    type="button"
-                    class="issue-filter-btn"
-                    data-issue-filter="all"
-                    aria-pressed="true"
-                  >
-                    すべて
-                  </button>
-                  <button
-                    type="button"
-                    class="issue-filter-btn"
-                    data-issue-filter="no_port"
-                    aria-pressed="false"
-                  >
-                    ポート空白のみ
-                  </button>
-                  <button
-                    type="button"
-                    class="issue-filter-btn"
-                    data-issue-filter="empty"
-                    aria-pressed="false"
-                  >
-                    空き0台のみ
-                  </button>
-                </div>
                 <label class="problem-select-group" for="problemSortSelect">
                   <span>並び替え:</span>
                   <select id="problemSortSelect">
@@ -4877,7 +4821,6 @@
       let activeSegmentData = null;
       let analysisLoading = false;
       let currentSegment = 'all';
-      let currentIssueFilter = 'all';
       let currentProblemSort = 'issue_count';
       let currentMinDelayFilter = 100;
 
@@ -4990,14 +4933,12 @@
 
       function resolveDisplayIssueType(ps) {
         if (
-          currentIssueFilter === 'empty' ||
           currentProblemSort === 'empty_count' ||
           currentProblemSort === 'empty_rate'
         ) {
           return 'empty';
         }
         if (
-          currentIssueFilter === 'no_port' ||
           currentProblemSort === 'no_port_count' ||
           currentProblemSort === 'no_port_rate'
         ) {
@@ -5031,10 +4972,16 @@
         const filtered = allStops
           .filter((ps) => {
             if ((ps.delay_count || 0) < currentMinDelayFilter) return false;
-            if (currentIssueFilter === 'empty') {
+            if (
+              currentProblemSort === 'empty_count' ||
+              currentProblemSort === 'empty_rate'
+            ) {
               return (ps.empty_count || 0) > 0;
             }
-            if (currentIssueFilter === 'no_port') {
+            if (
+              currentProblemSort === 'no_port_count' ||
+              currentProblemSort === 'no_port_rate'
+            ) {
               return (ps.no_port_count || 0) > 0;
             }
             return (ps.empty_count || 0) + (ps.no_port_count || 0) > 0;
@@ -5599,16 +5546,6 @@
             b.setAttribute('aria-pressed', String(b === btn));
           });
           renderAnalysisDashboard();
-        });
-      });
-
-      document.querySelectorAll('.issue-filter-btn').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          currentIssueFilter = btn.dataset.issueFilter || 'all';
-          document.querySelectorAll('.issue-filter-btn').forEach((b) => {
-            b.setAttribute('aria-pressed', String(b === btn));
-          });
-          renderProblemStopsSection();
         });
       });
 
