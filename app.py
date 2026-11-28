@@ -375,7 +375,10 @@ def collect_top_available_ports(near_ports: list[tuple[float, dict]], limit: int
 
 @app.get("/")
 def index():
-    return FileResponse(BASE_DIR / "index.html")
+    return FileResponse(
+        BASE_DIR / "index.html",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/api/map-data")
