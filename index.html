@@ -1536,8 +1536,8 @@
       .problem-dest-risk {
         margin-top: 3px;
         font-size: 11px;
-        font-weight: 600;
-        color: #92400e;
+        font-weight: 700;
+        color: #b91c1c;
       }
       .problem-dest-risk.is-muted {
         font-weight: 400;
@@ -2938,7 +2938,7 @@
                   <strong>最低遅延件数フィルター：</strong>割合（〜率順）で並べた際、遅延件数が極端に少ないバス停が上位に来ないようにする下限設定
                 </li>
                 <li>
-                  <strong>目的地満車リスク：</strong>進行方向側の主要駅周辺ポートすべてが返却不可となっていた割合（進行方向に駅がない区間は対象外）
+                  <strong>目的地満車リスク：</strong>進行方向側の主要駅周辺ポートすべてが返却不可となっていた割合（10%以上のリスクが観測された場合のみ一覧に赤字表示）
                 </li>
               </ul>
             </div>
@@ -5127,16 +5127,12 @@
             createLine(`ポート空白率: ${noPortRate}%（${ps.no_port_count}件）`),
           );
 
-          const destRiskClass =
-            ps.dest_full_rate === null || ps.dest_full_rate === undefined
-              ? 'problem-dest-risk is-muted'
-              : 'problem-dest-risk';
-          const destRiskRow = createLine(
-            formatDestFullRiskText(ps),
-            destRiskClass,
-          );
-
-          btn.append(topRow, metaRow, ratesRow, destRiskRow);
+          btn.append(topRow, metaRow, ratesRow);
+          if (typeof ps.dest_full_rate === 'number' && ps.dest_full_rate >= 10) {
+            btn.append(
+              createLine(formatDestFullRiskText(ps), 'problem-dest-risk'),
+            );
+          }
           btn.addEventListener('click', () => {
             setActiveProblemItem(ps.stop_id);
             analysisMap.setView([ps.lat, ps.lon], 16, { animate: true });
@@ -5433,11 +5429,9 @@
             td.dataset.value = String(val);
             const span = document.createElement('span');
             span.className =
-              val >= 20
+              val >= 10
                 ? 'rate-pill rate-pill-red'
-                : val > 0
-                  ? 'rate-pill rate-pill-amber'
-                  : 'rate-pill rate-pill-muted';
+                : 'rate-pill rate-pill-muted';
             span.textContent = `${val}%`;
             if (stationName) {
               span.title = `主な目的地駅: ${stationName}`;
