@@ -155,6 +155,90 @@
         display: none !important;
       }
 
+      .leaflet-interactive {
+        cursor: pointer;
+      }
+
+      /* 初期表示時の使い方ガイドカード */
+      .usage-guide-card {
+        position: absolute;
+        top: 82px;
+        left: 12px;
+        z-index: 999;
+        width: 320px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(29, 78, 216, 0.22);
+        border-radius: 10px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16);
+        font-size: 12px;
+        line-height: 1.5;
+        color: #1e293b;
+        box-sizing: border-box;
+      }
+      .usage-guide-card[hidden] {
+        display: none !important;
+      }
+      .usage-guide-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      .usage-guide-title {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #1d4ed8;
+      }
+      .usage-guide-close-btn {
+        min-width: 26px;
+        min-height: 26px;
+        padding: 0 6px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #f8fafc;
+        color: #475569;
+        font-family: inherit;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .usage-guide-close-btn:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+      .usage-guide-list {
+        margin: 0;
+        padding-left: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .usage-guide-list strong {
+        color: #0f172a;
+      }
+      .usage-guide-mobile-text {
+        display: none;
+        margin: 0;
+        font-size: 11.5px;
+        line-height: 1.4;
+        color: #1e293b;
+      }
+      .leaflet-tooltip.map-marker-tooltip {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          sans-serif;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #0f172a;
+        background: rgba(255, 255, 255, 0.97);
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 4px 8px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.16);
+      }
+
       @media (forced-colors: active) {
         .panel,
         .detail-panel,
@@ -443,6 +527,12 @@
         color: #475569;
         line-height: 1.3;
       }
+      .legend-hint {
+        margin: 2px 0 0 0;
+        font-size: 11px;
+        color: #475569;
+        line-height: 1.35;
+      }
       .legend-item {
         display: flex;
         align-items: center;
@@ -498,12 +588,12 @@
         border: 2px solid #7f1d1d;
       }
       .dot-hello {
-        background: #1a73e8;
-        border: 1px solid #0d47a1;
-      }
-      .dot-docomo {
         background: #e37400;
         border: 1px solid #8c4600;
+      }
+      .dot-docomo {
+        background: #1a73e8;
+        border: 1px solid #0d47a1;
       }
       .dot-empty {
         background: #9aa0a6;
@@ -754,7 +844,8 @@
         background: #fde047;
       }
       @media (min-width: 769px) {
-        .tab-panel-realtime.has-my-stops .detail-panel {
+        .tab-panel-realtime.has-my-stops .detail-panel,
+        .tab-panel-realtime.has-my-stops .usage-guide-card {
           top: 96px;
           max-height: calc(100dvh - var(--tab-bar-height) - 112px);
         }
@@ -916,23 +1007,12 @@
       }
       .port-action-btn-hello,
       .leaflet-container a.port-action-btn-hello {
-        background: #eff6ff;
-        color: #1d4ed8;
-        border: 1px solid #93c5fd;
-      }
-      .port-action-btn-hello:hover,
-      .leaflet-container a.port-action-btn-hello:hover {
-        background: #dbeafe;
-        border-color: #3b82f6;
-      }
-      .port-action-btn-docomo,
-      .leaflet-container a.port-action-btn-docomo {
         background: #fff7ed;
         color: #9a3412;
         border: 1px solid #fdba74;
       }
-      .port-action-btn-docomo:hover,
-      .leaflet-container a.port-action-btn-docomo:hover {
+      .port-action-btn-hello:hover,
+      .leaflet-container a.port-action-btn-hello:hover {
         background: #ffedd5;
         border-color: #fb923c;
       }
@@ -2071,6 +2151,45 @@
           left: 54px;
           right: 10px;
         }
+        .usage-guide-card {
+          position: fixed;
+          top: calc(
+            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
+              42px
+          );
+          left: 54px;
+          right: 10px;
+          width: auto;
+          padding: 7px 10px;
+          background: rgba(239, 246, 255, 0.96);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          border-radius: 8px;
+        }
+        .tab-panel-realtime.has-my-stops .usage-guide-card {
+          top: calc(
+            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
+              90px
+          );
+          left: 12px;
+          right: 12px;
+        }
+        .usage-guide-header {
+          order: 2;
+          margin-bottom: 0;
+        }
+        .usage-guide-title,
+        .usage-guide-list {
+          display: none;
+        }
+        .usage-guide-mobile-text {
+          display: block;
+          order: 1;
+          flex: 1;
+          min-width: 0;
+        }
         .my-stop-chip {
           min-block-size: 38px;
           padding: 6px 12px;
@@ -2346,6 +2465,7 @@
               >ポート空白・インフラ不足（300m内ポート0件）</span
             >
           </label>
+          <p class="legend-hint">※丸をクリックで到着予測・代替ポートを表示</p>
         </div>
 
         <div class="legend-group">
@@ -2368,8 +2488,42 @@
             </span>
             <span class="legend-label">ポート（空き0台・貸出不可）</span>
           </div>
+          <p class="legend-hint">※丸をクリックでポート名・空き台数を表示</p>
         </div>
       </div>
+    </aside>
+
+    <!-- 使い方ガイドカード（バス停未選択時のみ表示） -->
+    <aside
+      id="usageGuideCard"
+      class="usage-guide-card"
+      aria-label="使い方ガイド"
+      hidden
+    >
+      <div class="usage-guide-header">
+        <span class="usage-guide-title">使い方ガイド</span>
+        <button
+          id="closeUsageGuideBtn"
+          class="usage-guide-close-btn"
+          type="button"
+          aria-label="使い方ガイドを閉じる"
+        >
+          ×
+        </button>
+      </div>
+      <ul class="usage-guide-list">
+        <li>
+          <strong>遅延バス停（大きい丸）</strong
+          >をクリックすると、次のバス到着予測・最寄りシェアサイクル上位3件・自転車での行き先時間比較を確認できます。
+        </li>
+        <li>
+          <strong>シェアサイクルポート（小さい丸）</strong
+          >をクリックすると、ポート名と現在の貸出可能台数を確認できます。
+        </li>
+      </ul>
+      <p class="usage-guide-mobile-text">
+        大きい丸（遅延バス停）で到着予測と代替自転車、小さい丸でポート空き台数を表示します
+      </p>
     </aside>
 
     <!-- 選択中のバス停詳細パネル（PCは左上側・スマホは下部ボトムシート） -->
@@ -3055,6 +3209,16 @@
         return `https://www.google.com/maps/dir/?api=1&origin=${Number(busLat)},${Number(busLon)}&destination=${Number(portLat)},${Number(portLon)}&travelmode=walking`;
       }
 
+      function createOfficialPortLinkBtn(port) {
+        const safeRentalUrl = toSafeExternalUrl(port?.rental_url);
+        if (!safeRentalUrl) return null;
+        return createExternalLinkBtn(
+          '予約',
+          safeRentalUrl,
+          'port-action-btn-hello',
+        );
+      }
+
       function createBikePopup(p) {
         const wrap = document.createElement('div');
         wrap.append(
@@ -3063,18 +3227,14 @@
           createLine(`貸出可: ${p.bikes}台 / 返却可: ${p.docks}枠`),
         );
 
-        const safeRentalUrl = toSafeExternalUrl(p.rental_url);
-        if (safeRentalUrl) {
-          const actionRow = document.createElement('div');
-          actionRow.className = 'bike-popup-actions';
-          actionRow.append(
-            createExternalLinkBtn(
-              'ポート詳細・予約を開く',
-              safeRentalUrl,
-              'port-action-btn-hello',
-            ),
-          );
-          wrap.append(actionRow);
+        if (p.bikes > 0) {
+          const bookingBtn = createOfficialPortLinkBtn(p);
+          if (bookingBtn) {
+            const actionRow = document.createElement('div');
+            actionRow.className = 'bike-popup-actions';
+            actionRow.append(bookingBtn);
+            wrap.append(actionRow);
+          }
         }
 
         return wrap;
@@ -3498,28 +3658,19 @@
             const actionLinks = document.createElement('div');
             actionLinks.className = 'port-action-links';
 
-            const safeRentalUrl = toSafeExternalUrl(np.rental_url);
-            const officialLink = safeRentalUrl
-              ? createExternalLinkBtn(
-                  '公式ページ（予約）',
-                  safeRentalUrl,
-                  'port-action-btn-hello',
-                )
-              : createExternalLinkBtn(
-                  '公式ページ',
-                  'https://docomo-cycle.jp/',
-                  'port-action-btn-docomo',
-                );
-            officialLink.addEventListener('click', (e) => e.stopPropagation());
-
             const walkLink = createExternalLinkBtn(
               'Googleマップで徒歩ルート',
               buildWalkingRouteUrl(s.lat, s.lon, np.lat, np.lon),
               'port-action-btn-walk',
             );
             walkLink.addEventListener('click', (e) => e.stopPropagation());
+            actionLinks.append(walkLink);
 
-            actionLinks.append(officialLink, walkLink);
+            const officialLink = createOfficialPortLinkBtn(np);
+            if (officialLink) {
+              officialLink.addEventListener('click', (e) => e.stopPropagation());
+              actionLinks.append(officialLink);
+            }
             card.append(actionLinks);
 
             card.addEventListener('click', (e) => {
@@ -3627,11 +3778,39 @@
         }
       }
 
+      const usageGuideCard = document.getElementById('usageGuideCard');
+      const closeUsageGuideBtn = document.getElementById('closeUsageGuideBtn');
+      let usageGuideDismissed = false;
+
+      function shouldBindHoverTooltip() {
+        return !window.matchMedia('(hover: none) and (pointer: coarse)')
+          .matches;
+      }
+
+      function closeAllMapTooltips() {
+        busLayer.eachLayer((layer) => layer.closeTooltip?.());
+        bikeLayer.eachLayer((layer) => layer.closeTooltip?.());
+      }
+
+      function updateUsageGuideVisibility() {
+        if (!usageGuideCard) return;
+        const hasSelection = !stopDetailPanel.hidden || Boolean(selectedStopId);
+        usageGuideCard.hidden = hasSelection || usageGuideDismissed;
+      }
+
+      if (closeUsageGuideBtn) {
+        closeUsageGuideBtn.addEventListener('click', () => {
+          usageGuideDismissed = true;
+          updateUsageGuideVisibility();
+        });
+      }
+
       function selectStop(
         stop,
         { moveMap = true, resetPort = true, minZoom = 0 } = {},
       ) {
         map.closePopup();
+        closeAllMapTooltips();
         // スマホ幅で「設定・凡例」が開いていれば自動で閉じる
         setMobileSettingsOpen(false);
 
@@ -3642,6 +3821,7 @@
         selectedStopObj = stop;
         renderStopDetail(stop);
         stopDetailPanel.hidden = false;
+        updateUsageGuideVisibility();
 
         const realtimePanel = document.getElementById('panel-realtime');
         realtimePanel.classList.add('has-detail-sheet');
@@ -3671,6 +3851,7 @@
         realtimePanel.classList.remove('has-detail-sheet');
         realtimePanel.style.removeProperty('--detail-sheet-height');
         renderMyStopsBar();
+        updateUsageGuideVisibility();
       }
 
       function renderMyStopsBar() {
@@ -4004,7 +4185,21 @@
             fillOpacity: 0.8,
           });
 
-          marker.on('click', () => selectStop(s, { moveMap: true }));
+          if (shouldBindHoverTooltip()) {
+            const tt = document.createElement('span');
+            tt.textContent = `${s.name}（最大遅延 ${Math.round(s.max_delay_min)}分） / クリックで詳細・代替自転車を表示`;
+            marker.bindTooltip(tt, {
+              direction: 'top',
+              offset: [0, -6],
+              opacity: 0.96,
+              className: 'map-marker-tooltip',
+            });
+          }
+
+          marker.on('click', () => {
+            marker.closeTooltip();
+            selectStop(s, { moveMap: true });
+          });
           marker.addTo(busLayer);
         });
 
@@ -4078,7 +4273,7 @@
           data.bikeshare_ports.forEach((p) => {
             let color = '#9aa0a6';
             if (p.bikes > 0) {
-              color = p.provider === 'hellocycling' ? '#1a73e8' : '#e37400';
+              color = p.provider === 'hellocycling' ? '#e37400' : '#1a73e8';
             }
             const bikeMarker = L.circleMarker([p.lat, p.lon], {
               radius: 5,
@@ -4088,6 +4283,18 @@
               fillOpacity: 0.85,
             }).bindPopup(createBikePopup(p));
 
+            if (shouldBindHoverTooltip()) {
+              const tt = document.createElement('span');
+              tt.textContent = `${p.name || '名称未設定ポート'}（貸出可能 ${p.bikes}台） / クリックで詳細`;
+              bikeMarker.bindTooltip(tt, {
+                direction: 'top',
+                offset: [0, -5],
+                opacity: 0.96,
+                className: 'map-marker-tooltip',
+              });
+            }
+
+            bikeMarker.on('click', () => bikeMarker.closeTooltip());
             bikeMarker.addTo(bikeLayer);
           });
 
@@ -4108,6 +4315,7 @@
                 minZoom: 16,
               });
             }
+            updateUsageGuideVisibility();
           }
         } catch (err) {
           if (reqSeq !== mapLoadRequestSeq) return;
