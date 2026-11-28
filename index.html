@@ -408,6 +408,44 @@
         display: block;
         margin-top: 5px;
       }
+      .spec-qr-section {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #e2e8f0;
+        text-align: center;
+      }
+      .spec-qr-title {
+        margin: 0 0 8px 0;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .spec-qr-img {
+        display: block;
+        margin: 0 auto 8px auto;
+        width: 150px;
+        height: 150px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: #ffffff;
+      }
+      .spec-qr-note {
+        margin: 0 0 4px 0;
+        font-size: 11.5px;
+        color: #475569;
+        line-height: 1.45;
+      }
+      .spec-qr-url {
+        display: inline-block;
+        font-size: 11px;
+        color: #1d4ed8;
+        word-break: break-all;
+      }
+      @media (max-width: 768px) {
+        .spec-qr-section {
+          display: none;
+        }
+      }
 
       .controls {
         display: flex;
@@ -2430,6 +2468,27 @@
           CYCLING）、株式会社ドコモ・バイクシェアのデータを利用しています。
         </li>
       </ul>
+      <div id="specQrSection" class="spec-qr-section">
+        <h3 class="spec-qr-title">スマートフォンで開く（QRコード）</h3>
+        <img
+          id="specQrImg"
+          class="spec-qr-img"
+          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAIAAACx0UUtAAAFdUlEQVR4nO3dQXLDKBAF0Ghq7n9lzd4Lpijo5tu8t40tKckv7C6ged73/YNg/5x+APgfMko6GSWdjJJORkkno6STUdLJKOlklHQySjoZJZ2Mkk5GSSejpJNR0sko6WSUdDJKOhkl3b8rb36e56/FeNPVx2NM7dAav3fqyuO/xtSV6y71ztxoo5Vtc8ZR0sko6WSUdDLKT9dMHza2kxh/l5/6pr9SFqyUUCE14jvzkG3/wSnGUdLJKOlklHQyyk0108q35pVv6yuTNB/q5l2mqsC6maR3YRJurK6CNI6STkZJJ6Okk1EurpkybayKVkqKje99Dy23a2McJZ2Mkk5GSSejpPvKmmlqNVpddTK2cbrrXVhf9wMllHGUdDJKOhklnYxycc3UdlruuMI41bhh433H6nZZhZx3bBwlnYySTkZJJ6PcVDO1TWlk7v4ZW1lQ93QtxsuclDKOkk5GSSejpJNRfrpmCpmHCLGxDBpfuW4tYibjKOlklHQySjoZJd2z8q05ZFZmYyu8jTeq21Y1Vrcm8FQ1ZhwlnYySTkZJJ6PcVDOtaHuMU0cutdU9bT332v6SxlHSySjpZJR0MspP10xzd9o3Z9P24inf2AL87epivvJ3No6STkZJJ6Okk1F+ej9T3Qq6uku19QufenFdY/KnbEFd2+nAxlHSySjpZJR0MspNPSA2TuFsnNJYKSlW6o+NZyyN1f1GIR0ijKOkk1HSySjpZJSL55nGL26btKirP+pWsrXtsnrLFhDaz8RFfNaTTkZJJ6NcfD7TeFHcx4tPHTIUUo6E7MH6sDKv9sF+Jn6Zz3rSySjpZJSLe0CsLBI79dM6p/ZRPWX/hSlqJn6Zz3rSySjpZJR0fb3GNxY6U4/R1mx7ysrU0VO2B6tuK9gK4yjpZJR0Mko6GeWmtXkfTpUjmWVQ22TYk3F600bGUdLJKOlklHQyyk0108oX8I1zRXUPOb5RXZ33lq2R2/jr1+3BMo6STkZJJ6Okk1Eu7jW+cqm6F7dVCSvqjqcaq/vjrDCOkk5GSSejpJNRLu4B8Xmnss0xdft76pyqxkLqyynGUdLJKOlklHQySrq+85mmtBVJdX0NNp7t9Ha1wMhkHCWdjJJORkkno6Tr6zV+qt3AqSufmrN5Mrqn28/ERXzWk05GSSej3NRr/FTTufGlxk4dT3XqMd6udhLjF08xjpJORkkno6STUW7qAfHhVHftb9wqNPaU9Qmceu8pxlHSySjpZJR0MspN+5lOfVv/xv7ZU95982ohnQ+nGEdJJ6Okk1HSySgXn880/ulUi4Sp+7ZtYJqy8Vzad+b33bjr6FRFZRwlnYySTkZJJ6PcVDOdmv/YOINVtylnfKm2+7bZ+MzGUdLJKOlklHQyysU100p1svG4plPdxDcuL3wWisK6+a22rWDGUdLJKOlklHQySrq+M203atuTtLFYOdXr7/nC/VsfjKOkk1HSySjpZJSLe0BsVLdjqW2PTmZX76esKnI+ExfxWU86GSWdjJKurwfElFMTPBv3UW2sXZ6yyubUv2yKcZR0Mko6GSWdjJIupQfEqbNl2/qUj5+qrsCqq2zaVu4ZR0kno6STUdLJKBfXTG02Ho/bVga1rYJ7upoK1pVQxlHSySjpZJR0Mkq6X6iZ2povTL134xLBd19/9I2VzcaTn8aMo6STUdLJKOlklHTHeo1vtNJOu21NYN1Rs2Mrqw3benyMGUdJJ6Okk1HSySg31UxtX7HrToBt6z2x8cpvWRfBkBLKOEo6GSWdjJJORkn3leczcRXjKOlklHQySjoZJZ2Mkk5GSSejpJNR0sko6WSUdDJKOhklnYySTkZJJ6Okk1HSySjpZJR0MspfuP8AEHG44QR4ARoAAAAASUVORK5CYII="
+          width="150"
+          height="150"
+          alt="スマートフォン用QRコード"
+        />
+        <p class="spec-qr-note">
+          スマートフォンのカメラで読み取ると、外出先でも同じ画面を開けます
+        </p>
+        <a
+          class="spec-qr-url"
+          href="https://odpt-yokohama-bus-687077680653.asia-northeast1.run.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >https://odpt-yokohama-bus-687077680653.asia-northeast1.run.app/</a
+        >
+      </div>
     </div>
 
     <!-- 設定・凡例パネル（PCは右上常時表示、スマホはトグル開閉） -->
