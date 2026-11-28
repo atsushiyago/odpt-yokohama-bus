@@ -176,7 +176,8 @@
         color: #1e293b;
         box-sizing: border-box;
       }
-      .usage-guide-card[hidden] {
+      .usage-guide-card[hidden],
+      .tab-panel-realtime.has-detail-sheet .usage-guide-card {
         display: none !important;
       }
       .usage-guide-header {
@@ -2153,28 +2154,18 @@
         }
         .usage-guide-card {
           position: fixed;
-          top: calc(
-            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
-              42px
-          );
-          left: 54px;
-          right: 10px;
+          top: auto;
+          bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+          left: 12px;
+          right: 12px;
           width: auto;
-          padding: 7px 10px;
+          padding: 9px 12px;
           background: rgba(239, 246, 255, 0.96);
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
-          border-radius: 8px;
-        }
-        .tab-panel-realtime.has-my-stops .usage-guide-card {
-          top: calc(
-            var(--tab-bar-height) + max(8px, env(safe-area-inset-top, 0px)) +
-              90px
-          );
-          left: 12px;
-          right: 12px;
+          gap: 10px;
+          border-radius: 10px;
         }
         .usage-guide-header {
           order: 2;
@@ -2189,6 +2180,9 @@
           order: 1;
           flex: 1;
           min-width: 0;
+          font-size: 13.5px;
+          font-weight: 600;
+          line-height: 1.45;
         }
         .my-stop-chip {
           min-block-size: 38px;
@@ -2522,7 +2516,7 @@
         </li>
       </ul>
       <p class="usage-guide-mobile-text">
-        大きい丸（遅延バス停）で到着予測と代替自転車、小さい丸でポート空き台数を表示します
+        大きい丸（遅延バス停）をタップで到着予測と代替自転車、小さい丸をタップで空き台数を表示します
       </p>
     </aside>
 
@@ -3819,6 +3813,7 @@
         }
         selectedStopId = stop.stop_id;
         selectedStopObj = stop;
+        usageGuideDismissed = true;
         renderStopDetail(stop);
         stopDetailPanel.hidden = false;
         updateUsageGuideVisibility();
@@ -4294,7 +4289,11 @@
               });
             }
 
-            bikeMarker.on('click', () => bikeMarker.closeTooltip());
+            bikeMarker.on('click', () => {
+              bikeMarker.closeTooltip();
+              usageGuideDismissed = true;
+              updateUsageGuideVisibility();
+            });
             bikeMarker.addTo(bikeLayer);
           });
 
