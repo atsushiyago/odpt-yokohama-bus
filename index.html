@@ -1779,6 +1779,37 @@
           padding: 12px 10px 24px 10px;
           gap: 12px;
         }
+        .analysis-segment-bar {
+          padding: 8px 10px;
+          gap: 6px;
+          flex-wrap: nowrap;
+        }
+        .analysis-segment-left {
+          gap: 6px;
+          flex-wrap: nowrap;
+          min-width: 0;
+        }
+        .analysis-segment-label {
+          font-size: 11.5px;
+          white-space: nowrap;
+        }
+        .segment-btn-group {
+          padding: 2px;
+          gap: 2px;
+          flex-wrap: nowrap;
+        }
+        .segment-btn {
+          min-inline-size: 40px;
+          padding: 5px 8px;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        .analysis-refresh-btn {
+          padding: 5px 8px;
+          font-size: 11.5px;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
         .problem-split {
           grid-template-columns: 1fr;
         }
@@ -2880,8 +2911,28 @@
               </div>
             </div>
             <p class="analysis-section-note">
-              遅延時に「ポート空白」または「空き0台」で自転車に乗り換えられなかった延べ回数が多い上位30バス停です。
+              選択した条件・並び順での上位30バス停を表示しています。
             </p>
+            <div class="route-guide-box">
+              <div class="route-guide-title">見方・指標の説明</div>
+              <ul class="route-guide-list">
+                <li>
+                  <strong>代替不可件数順（既定）：</strong>「空き0台件数」と「ポート空白件数」の合計が多い順（自転車で代替できなかった回数が最も多い順）
+                </li>
+                <li>
+                  <strong>空き0台（再配置候補）：</strong>半径300m以内にポートはあるが貸出可能が0台だった回数・割合（車両補充や再配置が有効な地点）
+                </li>
+                <li>
+                  <strong>ポート空白（設置候補）：</strong>半径300m以内にポート自体がない回数・割合（ポート新設の検討余地がある地点）
+                </li>
+                <li>
+                  <strong>最低遅延件数フィルター：</strong>割合（〜率順）で並べた際、遅延件数が極端に少ないバス停が上位に来ないようにする下限設定
+                </li>
+                <li>
+                  <strong>目的地満車リスク：</strong>進行方向側の主要駅周辺ポートすべてが返却不可となっていた割合（進行方向に駅がない区間は対象外）
+                </li>
+              </ul>
+            </div>
             <div class="problem-split">
               <div
                 id="analysisMap"
@@ -2934,6 +2985,9 @@
               <ul class="route-guide-list">
                 <li>
                   <strong>遅延件数：</strong>15分ごとの観測で遅延バス停を通過した延べ回数（※停留所数が多い系統ほど大きくなります）
+                </li>
+                <li>
+                  <strong>平均遅延：</strong>対象となる有効遅延（3分〜90分）における遅延時間の平均値
                 </li>
                 <li>
                   <strong>代替可能率：</strong>高いほど「そのまま自転車への乗り換え案内が効きやすい系統」
