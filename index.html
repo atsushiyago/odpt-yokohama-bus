@@ -1156,8 +1156,15 @@
         font-size: 11px;
         color: #475569;
       }
+      .comparison-docks.is-low-docks {
+        color: #b45309;
+        font-weight: 600;
+      }
       .comparison-docks-zero {
         font-size: 11px;
+        color: #b91c1c;
+        font-weight: 600;
+      }
         color: #a50e0e;
         font-weight: 600;
       }
@@ -1443,6 +1450,51 @@
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
+        align-items: center;
+      }
+      .problem-controls-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .problem-select-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #334155;
+      }
+      .problem-select-group select {
+        min-block-size: 28px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .problem-item-rates {
+        margin-top: 3px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 11px;
+        color: #334155;
+      }
+      .problem-dest-risk {
+        margin-top: 3px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #92400e;
+      }
+      .problem-dest-risk.is-muted {
+        font-weight: 400;
+        color: #64748b;
       }
       .issue-filter-btn {
         min-block-size: 28px;
@@ -1663,6 +1715,14 @@
       .rate-pill-red {
         background: #fee2e2;
         color: #991b1b;
+      }
+      .rate-pill-amber {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .rate-pill-muted {
+        background: #f1f5f9;
+        color: #64748b;
       }
 
       /* スマートフォン向けレスポンシブ（最大幅 768px） */
@@ -2709,35 +2769,55 @@
               <h2 id="problem-stops-title" class="analysis-section-title">
                 自転車で代替しづらい遅延バス停マップ＆ランキング
               </h2>
-              <div
-                class="filter-btn-group"
-                role="group"
-                aria-label="課題種別フィルタ"
-              >
-                <button
-                  type="button"
-                  class="issue-filter-btn"
-                  data-issue-filter="all"
-                  aria-pressed="true"
+              <div class="problem-controls-bar">
+                <div
+                  class="filter-btn-group"
+                  role="group"
+                  aria-label="課題種別フィルタ"
                 >
-                  すべて
-                </button>
-                <button
-                  type="button"
-                  class="issue-filter-btn"
-                  data-issue-filter="no_port"
-                  aria-pressed="false"
-                >
-                  ポート空白のみ
-                </button>
-                <button
-                  type="button"
-                  class="issue-filter-btn"
-                  data-issue-filter="empty"
-                  aria-pressed="false"
-                >
-                  空き0台のみ
-                </button>
+                  <button
+                    type="button"
+                    class="issue-filter-btn"
+                    data-issue-filter="all"
+                    aria-pressed="true"
+                  >
+                    すべて
+                  </button>
+                  <button
+                    type="button"
+                    class="issue-filter-btn"
+                    data-issue-filter="no_port"
+                    aria-pressed="false"
+                  >
+                    ポート空白のみ
+                  </button>
+                  <button
+                    type="button"
+                    class="issue-filter-btn"
+                    data-issue-filter="empty"
+                    aria-pressed="false"
+                  >
+                    空き0台のみ
+                  </button>
+                </div>
+                <label class="problem-select-group" for="problemSortSelect">
+                  <span>並び替え:</span>
+                  <select id="problemSortSelect">
+                    <option value="issue_count" selected>代替不可件数順</option>
+                    <option value="empty_count">空き0台件数順</option>
+                    <option value="empty_rate">空き0台率順</option>
+                    <option value="no_port_count">ポート空白件数順</option>
+                    <option value="no_port_rate">ポート空白率順</option>
+                  </select>
+                </label>
+                <label class="problem-select-group" for="problemMinDelaySelect">
+                  <span>最低遅延件数:</span>
+                  <select id="problemMinDelaySelect">
+                    <option value="100" selected>100件以上</option>
+                    <option value="50">50件以上</option>
+                    <option value="0">すべて</option>
+                  </select>
+                </label>
               </div>
             </div>
             <p class="analysis-section-note">
@@ -2804,6 +2884,9 @@
                 </li>
                 <li>
                   <strong>ポート空白率：</strong>高いほど「半径300m内にポートがなく新設検討の余地がある系統」
+                </li>
+                <li>
+                  <strong>目的地満車リスク：</strong>進行方向側の主要駅周辺ポートすべてで返却可能ラックが0（または返却停止）となっていた割合
                 </li>
               </ul>
             </div>
@@ -2905,6 +2988,21 @@
                         command="--sort"
                       >
                         <span>ポート空白率</span>
+                        <span class="sort-indicator" aria-hidden="true"></span>
+                      </button>
+                    </th>
+                    <th
+                      scope="col"
+                      data-type="number"
+                      data-sort-key="dest_full_rate"
+                    >
+                      <button
+                        type="button"
+                        class="table-sort-btn"
+                        commandfor="routeAnalysisTable"
+                        command="--sort"
+                      >
+                        <span>目的地満車リスク</span>
                         <span class="sort-indicator" aria-hidden="true"></span>
                       </button>
                     </th>
@@ -3317,14 +3415,23 @@
           li.append(header);
 
           if (d.returnable) {
+            const isLowDocks =
+              d.dest_dock_low_risk ||
+              (typeof d.dest_docks_300m === 'number' && d.dest_docks_300m <= 2);
+            const docksClass = isLowDocks
+              ? 'comparison-docks is-low-docks'
+              : 'comparison-docks';
+            const docksDetail = isLowDocks
+              ? `満車注意 / 最寄: ${d.dest_port_name} 空き${d.dest_port_docks}枠`
+              : `最寄: ${d.dest_port_name} 空き${d.dest_port_docks}枠`;
             li.append(
               createLine(
                 `バス到着まで ${d.bus_eta_min}分 ／ 自転車なら ${d.bike_total_min}分`,
                 'comparison-times',
               ),
               createLine(
-                `返却可能(${d.provider_label}): 300m内 計${d.dest_docks_300m}枠（最寄: ${d.dest_port_name} 空き${d.dest_port_docks}枠）`,
-                'comparison-docks',
+                `返却可能(${d.provider_label}): 300m内 計${d.dest_docks_300m}枠（${docksDetail}）`,
+                docksClass,
               ),
             );
           } else {
@@ -4649,6 +4756,35 @@
       let analysisLoading = false;
       let currentSegment = 'all';
       let currentIssueFilter = 'all';
+      let currentProblemSort = 'issue_count';
+      let currentMinDelayFilter = 100;
+
+      function calcRatePct(num, den) {
+        if (!den || den <= 0) return 0;
+        return Math.round((num / den) * 1000) / 10;
+      }
+
+      function getStopRates(ps) {
+        const emptyRate =
+          typeof ps.empty_rate === 'number'
+            ? ps.empty_rate
+            : calcRatePct(ps.empty_count || 0, ps.delay_count || 0);
+        const noPortRate =
+          typeof ps.no_port_rate === 'number'
+            ? ps.no_port_rate
+            : calcRatePct(ps.no_port_count || 0, ps.delay_count || 0);
+        return { emptyRate, noPortRate };
+      }
+
+      function formatDestFullRiskText(item) {
+        if (item.dest_full_rate === null || item.dest_full_rate === undefined) {
+          return '目的地満車リスク: 対象外（進行方向に駅なし）';
+        }
+        const stPart = item.dest_station_name
+          ? `（${item.dest_station_name}）`
+          : '';
+        return `目的地満車リスク: ${item.dest_full_rate}%${stPart}`;
+      }
       let analysisMap = null;
       let analysisStopLayer = null;
       let analysisMarkersById = new Map();
@@ -4691,8 +4827,9 @@
         }
       }
 
-      function createProblemPopup(ps) {
-        const isNoPort = ps.issue_type === 'no_port';
+      function createProblemPopup(ps, displayIssueType = ps.issue_type) {
+        const isNoPort = displayIssueType === 'no_port';
+        const { emptyRate, noPortRate } = getStopRates(ps);
         const wrap = document.createElement('div');
 
         const badge = document.createElement('span');
@@ -4721,11 +4858,47 @@
             `遅延件数: ${ps.delay_count}件（平均 ${ps.avg_delay_min}分）`,
           ),
           createLine(
-            `内訳: 代替可 ${ps.available_count} / 空き0台 ${ps.empty_count} / 空白 ${ps.no_port_count}`,
+            `内訳: 代替可 ${ps.available_count} / 空き0台 ${ps.empty_count}(${emptyRate}%) / 空白 ${ps.no_port_count}(${noPortRate}%)`,
           ),
+          createLine(formatDestFullRiskText(ps)),
           createLine(`最寄りポート距離: ${distText}`),
         );
         return wrap;
+      }
+
+      function resolveDisplayIssueType(ps) {
+        if (
+          currentIssueFilter === 'empty' ||
+          currentProblemSort === 'empty_count' ||
+          currentProblemSort === 'empty_rate'
+        ) {
+          return 'empty';
+        }
+        if (
+          currentIssueFilter === 'no_port' ||
+          currentProblemSort === 'no_port_count' ||
+          currentProblemSort === 'no_port_rate'
+        ) {
+          return 'no_port';
+        }
+        return ps.issue_type;
+      }
+
+      function getProblemSortValue(ps, sortKey) {
+        const { emptyRate, noPortRate } = getStopRates(ps);
+        switch (sortKey) {
+          case 'empty_count':
+            return ps.empty_count || 0;
+          case 'empty_rate':
+            return emptyRate;
+          case 'no_port_count':
+            return ps.no_port_count || 0;
+          case 'no_port_rate':
+            return noPortRate;
+          case 'issue_count':
+          default:
+            return (ps.empty_count || 0) + (ps.no_port_count || 0);
+        }
       }
 
       function renderProblemStopsSection() {
@@ -4733,10 +4906,28 @@
         ensureAnalysisMap();
 
         const allStops = activeSegmentData.problem_stops || [];
-        const filtered = allStops.filter((ps) => {
-          if (currentIssueFilter === 'all') return true;
-          return ps.issue_type === currentIssueFilter;
-        });
+        const filtered = allStops
+          .filter((ps) => {
+            if ((ps.delay_count || 0) < currentMinDelayFilter) return false;
+            if (currentIssueFilter === 'empty') {
+              return (ps.empty_count || 0) > 0;
+            }
+            if (currentIssueFilter === 'no_port') {
+              return (ps.no_port_count || 0) > 0;
+            }
+            return (ps.empty_count || 0) + (ps.no_port_count || 0) > 0;
+          })
+          .sort((a, b) => {
+            const diff =
+              getProblemSortValue(b, currentProblemSort) -
+              getProblemSortValue(a, currentProblemSort);
+            if (diff !== 0) return diff;
+            if ((b.delay_count || 0) !== (a.delay_count || 0)) {
+              return (b.delay_count || 0) - (a.delay_count || 0);
+            }
+            return (b.avg_delay_min || 0) - (a.avg_delay_min || 0);
+          })
+          .slice(0, 30);
 
         analysisStopLayer.clearLayers();
         analysisMarkersById.clear();
@@ -4752,7 +4943,9 @@
 
         const boundsPoints = [];
         const listItems = filtered.map((ps, idx) => {
-          const isNoPort = ps.issue_type === 'no_port';
+          const displayType = resolveDisplayIssueType(ps);
+          const isNoPort = displayType === 'no_port';
+          const { emptyRate, noPortRate } = getStopRates(ps);
           const fillColor = isNoPort ? '#dc2626' : '#8e24aa';
           const borderColor = isNoPort ? '#7f1d1d' : '#4a148c';
           const radius = Math.min(16, 7 + Math.sqrt(ps.delay_count) * 1.4);
@@ -4763,7 +4956,7 @@
             weight: 2,
             fillColor,
             fillOpacity: 0.82,
-          }).bindPopup(createProblemPopup(ps));
+          }).bindPopup(createProblemPopup(ps, displayType));
 
           marker.on('click', () => setActiveProblemItem(ps.stop_id));
           marker.addTo(analysisStopLayer);
@@ -4805,7 +4998,23 @@
             createLine(`最寄りポート: ${distText}`),
           );
 
-          btn.append(topRow, metaRow);
+          const ratesRow = document.createElement('div');
+          ratesRow.className = 'problem-item-rates';
+          ratesRow.append(
+            createLine(`空き0台率: ${emptyRate}%（${ps.empty_count}件）`),
+            createLine(`ポート空白率: ${noPortRate}%（${ps.no_port_count}件）`),
+          );
+
+          const destRiskClass =
+            ps.dest_full_rate === null || ps.dest_full_rate === undefined
+              ? 'problem-dest-risk is-muted'
+              : 'problem-dest-risk';
+          const destRiskRow = createLine(
+            formatDestFullRiskText(ps),
+            destRiskClass,
+          );
+
+          btn.append(topRow, metaRow, ratesRow, destRiskRow);
           btn.addEventListener('click', () => {
             setActiveProblemItem(ps.stop_id);
             analysisMap.setView([ps.lat, ps.lon], 16, { animate: true });
@@ -5089,6 +5298,32 @@
             return td;
           };
 
+          const createDestRiskCell = (val, stationName) => {
+            const td = document.createElement('td');
+            if (val === null || val === undefined) {
+              td.dataset.value = '-1';
+              const span = document.createElement('span');
+              span.className = 'rate-pill rate-pill-muted';
+              span.textContent = '—';
+              td.append(span);
+              return td;
+            }
+            td.dataset.value = String(val);
+            const span = document.createElement('span');
+            span.className =
+              val >= 20
+                ? 'rate-pill rate-pill-red'
+                : val > 0
+                  ? 'rate-pill rate-pill-amber'
+                  : 'rate-pill rate-pill-muted';
+            span.textContent = `${val}%`;
+            if (stationName) {
+              span.title = `主な目的地駅: ${stationName}`;
+            }
+            td.append(span);
+            return td;
+          };
+
           tr.append(
             th,
             tdCount,
@@ -5096,6 +5331,7 @@
             createRateCell(r.available_rate, 'rate-pill-green'),
             createRateCell(r.empty_rate, 'rate-pill-purple'),
             createRateCell(r.no_port_rate, 'rate-pill-red'),
+            createDestRiskCell(r.dest_full_rate, r.dest_station_name),
           );
           return tr;
         });
@@ -5259,6 +5495,24 @@
           renderProblemStopsSection();
         });
       });
+
+      const problemSortSelect = document.getElementById('problemSortSelect');
+      if (problemSortSelect) {
+        problemSortSelect.addEventListener('change', () => {
+          currentProblemSort = problemSortSelect.value || 'issue_count';
+          renderProblemStopsSection();
+        });
+      }
+
+      const problemMinDelaySelect = document.getElementById(
+        'problemMinDelaySelect',
+      );
+      if (problemMinDelaySelect) {
+        problemMinDelaySelect.addEventListener('change', () => {
+          currentMinDelayFilter = Number(problemMinDelaySelect.value || 0);
+          renderProblemStopsSection();
+        });
+      }
 
       analysisReloadBtn.addEventListener('click', () =>
         loadAnalysisData(true),

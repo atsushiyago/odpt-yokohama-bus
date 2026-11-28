@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import logging
 import math
 import os
@@ -255,6 +256,14 @@ def extract_rental_url(station: dict) -> str | None:
     return None
 
 
+def _parse_gbfs_flag(val, default: bool = True) -> bool:
+    if val is None:
+        return default
+    if isinstance(val, bool):
+        return val
+    return str(val).strip().lower() in ("true", "1", "yes")
+
+
 def fetch_bikeshare_stations(force_refresh: bool = False):
     now = time.monotonic()
     if not force_refresh:
@@ -307,11 +316,15 @@ def fetch_bikeshare_stations(force_refresh: bool = False):
                     base = info_map[sid]
                     bikes_val = st.get("num_bikes_available")
                     docks_val = st.get("num_docks_available")
+                    is_renting = _parse_gbfs_flag(st.get("is_renting"), True)
+                    is_returning = _parse_gbfs_flag(st.get("is_returning"), True)
                     all_stations.append(
                         {
                             **base,
-                            "bikes": int(bikes_val) if bikes_val is not None else 0,
-                            "docks": int(docks_val) if docks_val is not None else 0,
+                            "bikes": int(bikes_val) if (bikes_val is not None and is_renting) else 0,
+                            "docks": int(docks_val) if (docks_val is not None and is_returning) else 0,
+                            "is_renting": is_renting,
+                            "is_returning": is_returning,
                         }
                     )
         except Exception as e:
@@ -565,6 +578,7 @@ def get_map_data(
                         "bike_total_min": None,
                         "time_diff_min": None,
                         "dest_docks_300m": 0,
+                        "dest_dock_low_risk": True,
                         "dest_port_name": None,
                         "dest_port_docks": 0,
                         "dest_port_distance_m": None,
@@ -597,6 +611,7 @@ def get_map_data(
                     "ride_min": max(1, math.ceil(ride_raw)),
                     "walk_from_port_min": max(1, math.ceil(walk2_raw)),
                     "dest_docks_300m": total_docks_300m,
+                    "dest_dock_low_risk": total_docks_300m <= 2,
                     "dest_port_name": dst_p["name"] or "名称未設定",
                     "dest_port_docks": dst_p["docks"],
                     "dest_port_distance_m": int(round(dst_port_dist_m)),
@@ -809,6 +824,10 @@ def trigger_collect():
     )
 
 
+LOCAL_ANALYSIS_PATH = (
+    BASE_DIR.parent / "odpt-bikeshare-collector" / "data" / "analysis_summary.json"
+)
+LOCAL_ANALYSIS_CACHE = {"mtime": 0.0, "data": None}
 ANALYSIS_SUMMARY_URL = (
     "https://raw.githubusercontent.com/atsushiyago/odpt-bikeshare-collector"
     "/main/data/analysis_summary.json"
@@ -820,7 +839,21 @@ ANALYSIS_CACHE_LOCK = threading.Lock()
 
 @app.get("/api/analysis")
 def get_analysis_summary():
-    """GitHub 上の蓄積データ分析サマリー JSON を取得する（300秒メモリキャッシュ付き）。"""
+    """ローカル集計 JSON（存在時）または GitHub 上の蓄積データ分析サマリー JSON を取得する。"""
+    if LOCAL_ANALYSIS_PATH.exists():
+        try:
+            mtime = LOCAL_ANALYSIS_PATH.stat().st_mtime
+            with ANALYSIS_CACHE_LOCK:
+                if LOCAL_ANALYSIS_CACHE["data"] is not None and LOCAL_ANALYSIS_CACHE["mtime"] == mtime:
+                    return LOCAL_ANALYSIS_CACHE["data"]
+            payload = json.loads(LOCAL_ANALYSIS_PATH.read_text(encoding="utf-8"))
+            with ANALYSIS_CACHE_LOCK:
+                LOCAL_ANALYSIS_CACHE["mtime"] = mtime
+                LOCAL_ANALYSIS_CACHE["data"] = payload
+            return payload
+        except (OSError, ValueError) as exc:
+            logger.warning("Failed to read local analysis summary: %s", exc)
+
     now = time.monotonic()
     with ANALYSIS_CACHE_LOCK:
         cached_data = ANALYSIS_CACHE["data"]
